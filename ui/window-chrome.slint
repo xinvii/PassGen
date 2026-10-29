@@ -1,0 +1,19 @@
+export struct ChromeSkin {
+    top-left: image, top: image, top-right: image,
+    left: image, center: image, right: image,
+    bottom-left: image, bottom: image, bottom-right: image,
+    cap-x: length, cap-top: length, cap-bottom: length,
+}
+
+export component WindowChrome inherits Rectangle {
+    in property <ChromeSkin> skin;
+    Image { x: 0px; y: 0px; width: root.skin.cap-x; height: root.skin.cap-top; accessible-role: none; source: root.skin.top-left; image-fit: fill; }
+    Image { x: root.skin.cap-x; y: 0px; width: root.width - 2 * root.skin.cap-x; height: root.skin.cap-top; accessible-role: none; source: root.skin.top; image-fit: fill; }
+    Image { x: root.width - root.skin.cap-x; y: 0px; width: root.skin.cap-x; height: root.skin.cap-top; accessible-role: none; source: root.skin.top-right; image-fit: fill; }
+    Image { x: 0px; y: root.skin.cap-top; width: root.skin.cap-x; height: root.height - root.skin.cap-top - root.skin.cap-bottom; accessible-role: none; source: root.skin.left; image-fit: fill; }
+    Image { x: root.skin.cap-x; y: root.skin.cap-top; width: root.width - 2 * root.skin.cap-x; height: root.height - root.skin.cap-top - root.skin.cap-bottom; accessible-role: none; source: root.skin.center; image-fit: fill; }
+    Image { x: root.width - root.skin.cap-x; y: root.skin.cap-top; width: root.skin.cap-x; height: root.height - root.skin.cap-top - root.skin.cap-bottom; accessible-role: none; source: root.skin.right; image-fit: fill; }
+    Image { x: 0px; y: root.height - root.skin.cap-bottom; width: root.skin.cap-x; height: root.skin.cap-bottom; accessible-role: none; source: root.skin.bottom-left; image-fit: fill; }
+    Image { x: root.skin.cap-x; y: root.height - root.skin.cap-bottom; width: root.width - 2 * root.skin.cap-x; height: root.skin.cap-bottom; accessible-role: none; source: root.skin.bottom; image-fit: fill; }
+    Image { x: root.width - root.skin.cap-x; y: root.height - root.skin.cap-bottom; width: root.skin.cap-x; height: root.skin.cap-bottom; accessible-role: none; source: root.skin.bottom-right; image-fit: fill; }
+}

@@ -1,0 +1,275 @@
+import { Palette } from "theme.slint";
+import "../assets/NotoSansSC-UI.ttf";
+import { ActionButton, WindowButton, Label, LengthSlider, LengthInput } from "components.slint";
+import { WindowChrome, ChromeSkin } from "window-chrome.slint";
+export { ChromeSkin }
+
+export struct CharacterOption {
+    label: string,
+    short-label: string,
+    selected: bool,
+}
+
+export component AppWindow inherits Window {
+    title: root.qa-preview ? "PassGen [UI preview]" : "PassGen";
+    icon: @image-url("../assets/passgen.png");
+    preferred-width: 422px;
+    preferred-height: root.initial-page-height + 2 * root.shadow-padding;
+    min-width: 422px;
+    min-height: 222px;
+    no-frame: true;
+    resize-border-width: 0px;
+    background: transparent;
+    default-font-family: "Noto Sans SC";
+    default-font-size: 12px;
+
+    in property <bool> chinese: true;
+    in property <ChromeSkin> chrome-skin;
+    out property <length> shadow-padding: 36px;
+    in property <length> initial-page-height: 263px;
+    callback begin-resize(int);
+    in property <bool> qa-preview;
+    in property <bool> pin;
+    in-out property <bool> about;
+    in property <int> length-value: 20;
+    in-out property <string> length-text: "20";
+    in property <bool> length-invalid;
+    in property <[CharacterOption]> options;
+    in property <string> generated-password;
+    in property <string> app-version;
+    in property <bool> can-copy;
+    in property <bool> copied;
+    in property <string> status;
+    callback mode-changed(bool);
+    callback toggle-type(int);
+    callback length-edited(string);
+    callback length-committed(string);
+    callback length-changed(int);
+    callback language-changed(bool);
+    callback regenerate();
+    callback copy-password();
+    callback return-to-generator();
+    callback animate-window-size();
+    in property <float> pin-progress: 0;
+    in property <float> about-progress: 0;
+    in property <float> language-progress: 1;
+    // Additional rows only for long passwords; the default design remains 263px tall.
+    out property <length> target-result-extra: root.length-value > 32 ? (ceil(root.length-value / 20.0) - 1) * 20px : 0px;
+    in property <length> result-extra: 0px;
+    private property <length> generator-height: 263px - 30px * root.pin-progress + root.result-extra;
+    private property <length> about-height: 150px;
+    out property <length> page-height: root.generator-height * (1 - root.about-progress) + root.about-height * root.about-progress + (root.status != "" && !root.about ? 36px : 0px);
+    out property <length> card-top: card.y;
+    changed pin => { scroll.content-y = 0px; root.animate-window-size(); }
+    changed about => { scroll.content-y = 0px; root.animate-window-size(); }
+    changed chinese => { root.animate-window-size(); }
+    changed target-result-extra => { root.animate-window-size(); }
+    changed status => { root.animate-window-size(); }
+    changed maximized => { if !root.maximized { root.animate-window-size(); } }
+
+    WindowChrome { width: root.width; height: root.height; skin: root.chrome-skin; }
+    card := Rectangle {
+        x: root.shadow-padding; y: root.shadow-padding;
+        width: root.width - 2 * root.shadow-padding;
+        height: root.height - 2 * root.shadow-padding;
+        clip: true;
+        Rectangle {
+            x: 0px; y: 0px; width: parent.width; height: 30px;
+            WindowMoveArea {
+                x: 0px; y: 0px; height: 30px;
+                width: parent.width - 89px;
+                HorizontalLayout {
+                    x: 10px; y: 7px; height: 16px;
+                    width: brand-title.preferred-width + 20px;
+                    spacing: 4px;
+                    brand-title := Text {
+                        text: "PassGen"; horizontal-stretch: 0;
+                        color: Palette.text; font-size: 12px;
+                        vertical-alignment: center;
+                    }
+                    WindowButton {
+                        width: 16px; height: 16px; show-feedback: false;
+                        label: root.about ? (root.chinese ? "返回生成器" : "Back to generator") : (root.chinese ? "关于 PassGen" : "About PassGen");
+                        Image {
+                            width: 16px; height: 16px;
+                            source: root.about ? @image-url("../assets/figma/title-back.svg") : @image-url("../assets/figma/title-menu.svg");
+                        }
+                        clicked => { if root.about { root.return-to-generator(); } else { root.about = true; } }
+                    }
+                }
+            }
+            HorizontalLayout {
+                x: parent.width - 89px; width: 89px; height: 30px; spacing: 1px;
+                WindowButton {
+                    width: 44px; height: 30px;
+                    label: root.chinese ? "最小化" : "Minimize";
+                    Rectangle { x: 15px; y: 14.15px; width: 14px; height: 1.7px; border-radius: 0.85px; background: #5e6b7e; }
+                    clicked => { root.minimized = true; }
+                }
+                close-button := WindowButton {
+                    width: 44px; height: 30px; destructive: true;
+                    label: root.chinese ? "关闭" : "Close";
+                    Image {
+                        x: 16px; y: 9px; width: 12px; height: 12px;
+                        colorize: close-button.hovered || close-button.pressed ? white : #5e6b7e;
+                        source: @image-url("../assets/figma/window-close.svg");
+                    }
+                    clicked => { root.close(); }
+                }
+            }
+        }
+        scroll := Flickable {
+            x: 0px; y: 30px; width: parent.width; height: parent.height - 40px;
+            content-x: 0px; content-y: 0px;
+            content-width: self.width;
+            content-height: max(self.height, root.page-height - 40px);
+            interactive: self.content-height > self.height;
+            mouse-drag-pan-enabled: false;
+            generator := Rectangle {
+                x: 10px - 16px * root.about-progress; y: 10px;
+                width: parent.width - 20px; height: root.generator-height - 50px;
+                opacity: 1 - root.about-progress;
+                visible: root.about-progress < 1;
+                VerticalLayout {
+                    spacing: 10px;
+                    Rectangle {
+                        height: 42px; background: Palette.neutral; border-radius: 15px;
+                        Rectangle {
+                            x: 6px + ((parent.width - 18px) / 2 + 6px) * root.pin-progress;
+                            y: 6px; width: (parent.width - 30px) / 2; height: 30px;
+                            border-radius: 9px; background: Palette.surface;
+                        }
+                        HorizontalLayout {
+                            padding: 6px; spacing: 6px;
+                            ActionButton {
+                                width: (generator.width - 18px) / 2;
+                                label: root.chinese ? "随机密码" : "Random"; fill: transparent;
+                                ink: root.pin ? Palette.muted : Palette.text;
+                                clicked => { root.mode-changed(false); }
+                            }
+                            ActionButton {
+                                width: (generator.width - 18px) / 2;
+                                label: root.chinese ? "PIN 码" : "PIN"; fill: transparent;
+                                ink: root.pin ? Palette.text : Palette.muted;
+                                clicked => { root.mode-changed(true); }
+                            }
+                        }
+                    }
+                    HorizontalLayout {
+                        height: 30px; spacing: 12px;
+                        LengthSlider {
+                            value: root.length-value; maximum: root.pin ? 12 : 64;
+                            changed(value) => { root.length-changed(value); }
+                        }
+                        LengthInput {
+                            value <=> root.length-text; invalid: root.length-invalid;
+                            edited(value) => { root.length-edited(value); }
+                            committed(value) => { root.length-committed(value); }
+                        }
+                    }
+                    Rectangle {
+                        height: 30px * (1 - root.pin-progress); clip: true;
+                        HorizontalLayout {
+                            y: 0px; height: 30px; spacing: 8px;
+                            for option[index] in root.options : ActionButton {
+                                width: (generator.width - 24px) / 4;
+                                height: 30px; border-radius: 8px;
+                                label: option.short-label; accessible-label: option.label;
+                                label-size: 13px;
+                                label-family: "Noto Sans SC";
+                                checked: option.selected; checkable: true; show-check: option.selected;
+                                fill: option.selected ? Palette.selected : Palette.neutral;
+                                ink: option.selected ? Palette.brand : #5e6b7e;
+                                enabled: !root.pin && !root.about;
+                                clicked => { root.toggle-type(index); }
+                            }
+                        }
+                    }
+                    ActionButton {
+                        height: 41px + root.result-extra;
+                        label: "";
+                        accessible-label: root.chinese ? "重新生成密码" : "Regenerate password";
+                        enabled: !root.about;
+                        fill: Palette.surface;
+                        hover-fill: Palette.selected;
+                        pressed-fill: Palette.selected;
+                        border-radius: 9px; border-width: 1px; border-color: Palette.border;
+                        Text {
+                            x: 12px; width: parent.width - 24px; height: parent.height;
+                            text: root.generated-password; font-size: 16px;
+                            color: root.pin ? #3d69cd : Palette.text;
+                            vertical-alignment: center; horizontal-alignment: center; wrap: word-wrap;
+                        }
+                        clicked => { root.regenerate(); }
+                    }
+                    ActionButton {
+                        height: 30px;
+                        label: root.copied ? (root.chinese ? "已复制" : "Copied") : (root.chinese ? "复制" : "Copy");
+                        fill: root.can-copy ? Palette.brand : Palette.muted; ink: white;
+                        enabled: root.can-copy && !root.about;
+                        clicked => { root.copy-password(); }
+                    }
+                }
+            }
+            Rectangle {
+                x: 10px + 16px * (1 - root.about-progress); y: 10px;
+                width: parent.width - 20px; height: 100px;
+                opacity: root.about-progress; visible: root.about-progress > 0;
+                VerticalLayout {
+                    spacing: 10px;
+                    Rectangle {
+                        width: 212px; height: 42px;
+                        background: Palette.neutral; border-radius: 15px;
+                        Rectangle {
+                            x: 6px + 96px * root.language-progress; y: 6px;
+                            width: 90px + 14px * root.language-progress; height: 30px;
+                            border-radius: 9px; background: Palette.surface;
+                        }
+                        HorizontalLayout {
+                            spacing: 6px; padding: 6px;
+                            ActionButton {
+                                label: "English"; width: 90px;
+                                fill: transparent; ink: root.chinese ? Palette.muted : Palette.brand;
+                                enabled: root.about; clicked => { root.language-changed(false); }
+                            }
+                            ActionButton {
+                                label: "简体中文"; width: 104px; label-family: "Noto Sans SC";
+                                fill: transparent; ink: root.chinese ? Palette.brand : Palette.muted;
+                                enabled: root.about; clicked => { root.language-changed(true); }
+                            }
+                        }
+                    }
+                    VerticalLayout {
+                        height: 48px; spacing: 12px;
+                        HorizontalLayout {
+                            height: 18px; spacing: 4px; alignment: start;
+                            Label { text: root.chinese ? "技术方案" : "Built with"; horizontal-stretch: 0; }
+                            Text { text: "Rust + Slint"; color: Palette.text; font-family: "Noto Sans SC"; font-size: 12px; horizontal-stretch: 0; vertical-alignment: center; }
+                            Label { text: "/"; horizontal-stretch: 0; }
+                            Label { text: root.chinese ? "版本" : "version"; horizontal-stretch: 0; }
+                            Label { text: root.app-version; horizontal-stretch: 0; }
+                            Label { text: "/"; horizontal-stretch: 0; }
+                            Label { text: root.chinese ? "检查更新" : "update"; horizontal-stretch: 0; }
+                        }
+                        // A real repository URL has not been supplied; no network action is attached.
+                        Label { text: "GitHub"; height: 18px; }
+                    }
+                }
+            }
+            Text {
+                x: 10px; y: root.generator-height - 32px;
+                width: parent.width - 20px; height: 28px;
+                text: root.status; visible: !root.about && root.status != "";
+                font-size: 12px; color: Palette.error; wrap: word-wrap;
+            }
+        }
+    }
+    TouchArea { x: card.x + 19px; y: card.y; width: card.width - 38px; height: 4px; mouse-cursor: ns-resize; pointer-event(e)=>{if e.kind==PointerEventKind.down {root.begin-resize(0);}} }
+    TouchArea { x: card.x + card.width - 4px; y: card.y + 19px; width: 4px; height: card.height - 38px; mouse-cursor: ew-resize; pointer-event(e)=>{if e.kind==PointerEventKind.down {root.begin-resize(1);}} }
+    TouchArea { x: card.x + 19px; y: card.y + card.height - 4px; width: card.width - 38px; height: 4px; mouse-cursor: ns-resize; pointer-event(e)=>{if e.kind==PointerEventKind.down {root.begin-resize(2);}} }
+    TouchArea { x: card.x; y: card.y + 19px; width: 4px; height: card.height - 38px; mouse-cursor: ew-resize; pointer-event(e)=>{if e.kind==PointerEventKind.down {root.begin-resize(3);}} }
+    TouchArea { x: card.x + card.width - 15px; y: card.y; width: 15px; height: 15px; mouse-cursor: nesw-resize; pointer-event(e)=>{if e.kind==PointerEventKind.down {root.begin-resize(4);}} }
+    TouchArea { x: card.x + card.width - 15px; y: card.y + card.height - 15px; width: 15px; height: 15px; mouse-cursor: nwse-resize; pointer-event(e)=>{if e.kind==PointerEventKind.down {root.begin-resize(5);}} }
+    TouchArea { x: card.x; y: card.y + card.height - 15px; width: 15px; height: 15px; mouse-cursor: nesw-resize; pointer-event(e)=>{if e.kind==PointerEventKind.down {root.begin-resize(6);}} }
+    TouchArea { x: card.x; y: card.y; width: 15px; height: 15px; mouse-cursor: nwse-resize; pointer-event(e)=>{if e.kind==PointerEventKind.down {root.begin-resize(7);}} }
+}

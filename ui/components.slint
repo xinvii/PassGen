@@ -1,0 +1,236 @@
+import { Palette } from "theme.slint";
+
+export component Label inherits Text {
+    color: Palette.muted;
+    font-size: 12px;
+    vertical-alignment: center;
+}
+
+export component Divider inherits Rectangle {
+    height: 1px;
+    background: Palette.divider;
+}
+
+export component ActionButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> enabled: true;
+    in property <bool> checked;
+    in property <bool> show-check;
+    in property <bool> show-focus-ring: true;
+    in property <bool> checkable: root.show-check;
+    in property <string> label-family: "Noto Sans SC";
+    in property <color> fill: Palette.selected;
+    in property <color> hover-fill: root.fill.darker(0.035);
+    in property <color> pressed-fill: root.fill.darker(0.09);
+    in property <color> ink: Palette.brand;
+    in property <length> label-size: 16px;
+    out property <bool> hovered: touch.has-hover;
+    out property <bool> pressed: touch.pressed;
+    callback clicked();
+    private property <bool> pointer-focus;
+    private property <bool> focused: keyboard.has-focus;
+    changed focused => { if !root.focused { root.pointer-focus = false; } }
+    forward-focus: keyboard;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-enabled: root.enabled;
+    accessible-checkable: root.checkable;
+    accessible-checked: root.checked;
+    accessible-action-default => { if root.enabled { root.clicked(); } }
+    height: 30px;
+    border-radius: 9px;
+    Rectangle {
+        x: 2px; y: 2px;
+        width: parent.width - 4px; height: parent.height - 4px;
+        border-radius: max(0px, root.border-radius - 2px);
+        border-width: 2px; border-color: Palette.brand;
+        visible: root.show-focus-ring && keyboard.has-focus && !root.pointer-focus;
+    }
+    background: root.enabled && touch.pressed ? root.pressed-fill
+        : root.enabled && touch.has-hover ? root.hover-fill : root.fill;
+    animate background { duration: 140ms; }
+    HorizontalLayout {
+        alignment: center;
+        spacing: 8px;
+        padding-left: 8px; padding-right: 8px;
+        padding-top: 0px; padding-bottom: 0px;
+        if root.show-check : Rectangle {
+            width: 16px;
+            vertical-stretch: 1;
+            Image {
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2;
+                width: 12.2667px;
+                height: 8.93333px;
+                source: @image-url("../assets/check.svg");
+                image-fit: contain;
+                opacity: root.checked ? 1 : 0;
+                animate opacity { duration: 140ms; }
+            }
+        }
+        Text {
+            text: root.label;
+            color: root.ink;
+            font-size: root.label-size;
+            font-family: root.label-family;
+            vertical-alignment: center;
+            horizontal-stretch: 0;
+        }
+    }
+    keyboard := FocusScope {
+        enabled: root.enabled;
+        key-pressed(event) => {
+            root.pointer-focus = false;
+            if root.enabled && (event.text == Key.Space || event.text == Key.Return) {
+                root.clicked();
+                return accept;
+            }
+            return reject;
+        }
+    }
+    touch := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: root.enabled ? pointer : default;
+        clicked => { root.pointer-focus = true; keyboard.focus(); root.clicked(); }
+    }
+}
+
+export component WindowButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> destructive;
+    in property <bool> show-feedback: true;
+    out property <bool> hovered: touch.has-hover;
+    out property <bool> pressed: touch.pressed;
+    callback clicked();
+    forward-focus: keyboard;
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+    height: 30px;
+    Rectangle {
+        width: root.width; height: root.height;
+        visible: root.show-feedback && !root.destructive;
+        background: root.pressed ? #d2d9e4 : #e3e7ef;
+        opacity: root.hovered || root.pressed ? 1 : 0;
+        animate opacity { duration: 140ms; }
+    }
+    Image {
+        width: root.width; height: root.height;
+        visible: root.show-feedback && root.destructive;
+        source: @image-url("../assets/window-close-hover.svg");
+        colorize: root.pressed ? #cf3038 : #e5484d;
+        opacity: root.hovered || root.pressed ? 1 : 0;
+        animate opacity { duration: 140ms; }
+    }
+    keyboard := FocusScope {
+        key-pressed(event) => {
+            if event.text == Key.Space || event.text == Key.Return {
+                root.clicked();
+                return accept;
+            }
+            return reject;
+        }
+    }
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { keyboard.focus(); root.clicked(); }
+    }
+    @children
+}
+
+export component LengthSlider inherits Rectangle {
+    in property <int> value;
+    in property <int> minimum: 4;
+    in property <int> maximum: 64;
+    callback changed(int);
+    forward-focus: keyboard;
+    height: 30px;
+    accessible-role: slider;
+    accessible-label: "Password length";
+    accessible-value: "\{root.value}";
+    Rectangle {
+        x: 0px;
+        y: 14px;
+        height: 2px;
+        background: #dce1ea;
+    }
+    Rectangle {
+        x: 0px;
+        y: 14px;
+        width: knob.x + 8px;
+        height: 2px;
+        background: Palette.brand;
+    }
+    knob := Rectangle {
+        x: (root.width - 16px) * (root.value - root.minimum) / (root.maximum - root.minimum);
+        y: 7px;
+        width: 16px;
+        height: 16px;
+        border-radius: 8px;
+        background: Palette.surface;
+        border-width: keyboard.has-focus ? 2px : 1px;
+        border-color: keyboard.has-focus ? Palette.brand : #a4acba;
+        Image {
+            width: 16px;
+            height: 16px;
+            source: @image-url("../assets/figma/slider-thumb.svg");
+            visible: !keyboard.has-focus;
+        }
+    }
+    keyboard := FocusScope {
+        key-pressed(event) => {
+            if event.text == Key.LeftArrow || event.text == Key.DownArrow {
+                root.changed(max(root.minimum, root.value - 1)); return accept;
+            }
+            if event.text == Key.RightArrow || event.text == Key.UpArrow {
+                root.changed(min(root.maximum, root.value + 1)); return accept;
+            }
+            return reject;
+        }
+    }
+    touch := TouchArea {
+        mouse-cursor: pointer;
+        pointer-event(event) => {
+            if event.kind == PointerEventKind.down {
+                keyboard.focus();
+                root.changed(clamp(round(root.minimum + (self.mouse-x - 8px) / (root.width - 16px) * (root.maximum - root.minimum)), root.minimum, root.maximum));
+            }
+        }
+        moved => {
+            if self.pressed {
+                root.changed(clamp(round(root.minimum + (self.mouse-x - 8px) / (root.width - 16px) * (root.maximum - root.minimum)), root.minimum, root.maximum));
+            }
+        }
+    }
+}
+
+export component LengthInput inherits Rectangle {
+    in-out property <string> value;
+    in property <bool> invalid;
+    out property <bool> focused: input.has-focus;
+    callback edited(string);
+    callback committed(string);
+    forward-focus: input;
+    width: 41px;
+    height: 30px;
+    border-radius: 9px;
+    border-width: input.has-focus || root.invalid ? 2px : 0px;
+    border-color: root.invalid ? Palette.error : input.has-focus ? Palette.brand : Palette.border;
+    background: Palette.surface;
+    changed focused => { if !root.focused { root.committed(root.value); } }
+    input := TextInput {
+        x: 10px;
+        width: parent.width - 20px;
+        text <=> root.value;
+        font-family: "Noto Sans SC";
+        font-size: 18px;
+        color: Palette.text;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        input-type: number;
+        single-line: true;
+        accessible-label: "Password length";
+        edited => { root.edited(self.text); }
+        accepted => { root.committed(self.text); self.clear-focus(); }
+    }
+}
