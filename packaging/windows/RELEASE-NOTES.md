@@ -6,7 +6,7 @@
 
 下载下方 `PassGen.exe`，双击即可运行，无需安装。无需 Rust、Visual Studio、WebView 或额外 VC++ 运行库；无需管理员权限。
 
-`PassGen.exe.sha256` 为对应的 SHA-256 校验文件；`PassGen-0.1.0-source.zip` 包含源码及完整第三方许可。GitHub 自动生成的 Source code ZIP／tar.gz 保留为原始 v0.1.0 标签的源码快照。
+`PassGen.exe.sha256` 为对应的 SHA-256 校验文件。源码使用下方 GitHub 自动生成的 `Source code (zip)` 或 `Source code (tar.gz)` 下载，对应原始 v0.1.0 标签。
 
 ## 功能
 
@@ -34,6 +34,6 @@ DB23F26BFAE48F93F522EDCBCD019240FCE1D40881E19CBD743D0A0A7C3A1FB7
 
 ## 许可
 
-[![Made with Slint](https://raw.githubusercontent.com/xinvii/PassGen/v0.1.0/docs/assets/made-with-slint.png)](https://slint.dev)
+[![Made with Slint](https://raw.githubusercontent.com/xinvii/PassGen/2cbefa829000101bbeb4e7b91a541401a324ac20/docs/assets/made-with-slint.png)](https://slint.dev)
 
-PassGen自身源码为MIT；Slint使用Royalty-free 2.0，官方署名徽标展示于本下载页。字体、徽标及其他依赖保留独立许可。完整许可原文随源码附件提供；详见[第三方声明](https://github.com/xinvii/PassGen/blob/main/THIRD-PARTY-NOTICES.md)。
+PassGen自身源码为MIT；Slint使用Royalty-free 2.0，官方署名徽标展示于本下载页。字体、徽标及其他依赖保留独立许可。完整依赖许可保留在[仓库许可目录](https://github.com/xinvii/PassGen/tree/main/LICENSES/third-party)；详见[第三方声明](https://github.com/xinvii/PassGen/blob/main/THIRD-PARTY-NOTICES.md)。

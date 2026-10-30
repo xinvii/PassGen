@@ -1,0 +1,4 @@
+# Preserve the original release license bytes without line-ending conversion.
+LICENSES/third-party/THIRD-PARTY-COMPONENTS.json -text
+LICENSES/third-party/crate-license-texts.txt -text
+LICENSES/third-party/rust-standard-library.html -text

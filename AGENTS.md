@@ -19,7 +19,7 @@ PassGen 是现代、轻量、完全离线的跨平台随机密码生成器。
 - 优先复用已有结构；应用初始化时再按实际需要建立 `src/core/`、`src/platform/`、`ui/` 等目录。
 - 文档分工：README说明使用及设置位置；`docs/implementation.md`说明架构与行为；`docs/development.md`记录构建、隔离检查和验证版本；`docs/design-history.md`保留设计迭代。更新当前说明时不要把历史阶段的限制写成当前状态。
 - PassGen自身源码使用用户选定的MIT；Slint桌面二进制选择Royalty-free 2.0，字体和官方徽标独立许可。保留LICENSE、LICENSES和THIRD-PARTY-NOTICES.md；公开的仓库首页及Release下载页展示未修改的官方Made with Slint徽标。不得把整个依赖集合都标为MIT。
-- 首个Release当前附件为PassGen.exe、PassGen.exe.sha256和含完整第三方许可的源码ZIP；GitHub自动源码链接保留。原程序ZIP及其校验不再作为附件，不移动v0.1.0标签。Release顶部使用用户提供的Slint原图（285px显示宽），Made with Slint官方署名仍在许可区域。
+- 首个Release当前仅手动上传PassGen.exe和PassGen.exe.sha256；源码使用GitHub自动生成的ZIP／tar.gz，不重复上传源码ZIP。完整第三方许可保留在LICENSES/third-party，原程序ZIP、其校验及额外源码ZIP仅作本地历史产物，不移动v0.1.0标签。Release顶部使用用户提供的Slint原图（285px显示宽），Made with Slint官方署名仍在许可区域。
 
 ## 密码与隐私
 

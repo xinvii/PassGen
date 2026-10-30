@@ -8,7 +8,7 @@
 
 [下载 Windows x64 便携版](https://github.com/xinvii/PassGen/releases/latest) · [全部版本](https://github.com/xinvii/PassGen/releases)
 
-下载 `PassGen.exe` 后双击即可运行，无需安装 Rust、Visual Studio、WebView 或额外 VC++ 运行库。另提供 `PassGen.exe.sha256` 和附完整第三方许可的源码压缩包；设置保存在当前 Windows 用户目录。
+下载 `PassGen.exe` 后双击即可运行，无需安装 Rust、Visual Studio、WebView 或额外 VC++ 运行库。另提供 `PassGen.exe.sha256`；源码使用 GitHub 自动生成的 `Source code (zip)`／`Source code (tar.gz)` 下载，完整依赖许可见[许可目录](LICENSES/third-party/README.md)。设置保存在当前 Windows 用户目录。
 
 2026-10-31，用户在没有开发工具的 Windows 10 和 Windows 11 环境中测试使用，未发现问题。未记录具体系统构建号及完整显示器测试矩阵；Linux / macOS 尚未验证。
 

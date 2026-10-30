@@ -21,4 +21,4 @@ PassGen 自身的源码使用 [MIT License](LICENSE)。第三方组件、字体�
 
 ## 其他依赖
 
-依赖版本由 `Cargo.lock` 固定。当前Release直接提供EXE和哈希文件；另附`PassGen-0.1.0-source.zip`，其`third-party-licenses/`包含依赖组件清单、许可原文、字体许可和Rust标准库第三方声明。该清单保守包含构建依赖图中的过程宏依赖，不表示所有依赖代码都进入运行时。原程序ZIP保留在本地历史产物中，不再作为Release附件提供。
+依赖版本由 `Cargo.lock` 固定。当前 Release 直接提供 EXE 和哈希文件，源码使用 GitHub 自动生成的 ZIP／tar.gz 下载，不再附加重复的源码 ZIP。原包内的依赖组件清单、许可原文与 Rust 标准库第三方声明保留在[完整依赖许可](LICENSES/third-party/README.md)，字体许可见上文。该清单保守包含构建依赖图中的过程宏依赖，不表示所有依赖代码都进入运行时。原程序 ZIP 与额外源码 ZIP 保留在本地历史产物中，不再作为 Release 附件提供。
