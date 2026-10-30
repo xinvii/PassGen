@@ -84,6 +84,8 @@
 
 35. **Windows验证与首版发布准备（2026-10-31）**：用户反馈在没有开发工具的Windows10和Windows11环境测试使用未发现问题，并授权整理提交、新建GitHub仓库PassGen和发布版本。用户选择PassGen源码使用MIT；Slint选择桌面Royalty-free 2.0，仓库及Release下载页展示官方Made with Slint徽标，保留独立许可。首版以0.1.0发布，EXE保持已验证测试版的字节与哈希；仅整理包内说明、许可、构建来源及校验信息，不改变UI、Figma、配置或生成逻辑。用户没有提供具体Windows构建号及完整DPI／多屏矩阵，不扩大验证声明。
 
+36. **首个Release改为单文件下载（2026-10-31）**：用户要求首个Release直接提供EXE、对应哈希及源码，并更换图片。EXE保持已测试版字节和SHA-256不变；提供`PassGen.exe`、`PassGen.exe.sha256`及带完整依赖许可的源码附件，移除原程序ZIP及其哈希附件但保留本地历史文件。原始v0.1.0标签不移动，GitHub自动源码链接保留。顶部改用用户提供的Slint原图，宽285px且保持比例；官方Made with Slint署名保留在许可区域。无应用／Figma变更，仅同步发布资料。
+
 ## 当前布局规范
 
 本轮Windows代码已对齐精简版，二十三项核心／状态／动画／外观／设置／位置测试、十四个示例界面场景及中英文滚轮事件检查通过。四个保存／重启场景和五个窗口位置场景已在位置记忆版本通过。最新独立程序为PassGen-Wheel.exe，旧的Shadow、Compact、WindowButtons、Icon、UIUpdate、ClickRefresh、Remember、FigmaShadow、Border、Position程序保留为历史版本。

@@ -8,7 +8,7 @@
 
 [下载 Windows x64 便携版](https://github.com/xinvii/PassGen/releases/latest) · [全部版本](https://github.com/xinvii/PassGen/releases)
 
-下载 ZIP 后解压，双击 `PassGen.exe` 即可运行，无需安装 Rust、Visual Studio、WebView 或额外 VC++ 运行库。设置保存在当前 Windows 用户目录。
+下载 `PassGen.exe` 后双击即可运行，无需安装 Rust、Visual Studio、WebView 或额外 VC++ 运行库。另提供 `PassGen.exe.sha256` 和附完整第三方许可的源码压缩包；设置保存在当前 Windows 用户目录。
 
 2026-10-31，用户在没有开发工具的 Windows 10 和 Windows 11 环境中测试使用，未发现问题。未记录具体系统构建号及完整显示器测试矩阵；Linux / macOS 尚未验证。
 
@@ -48,7 +48,7 @@ cargo build --locked --release
 
 生成的程序为 `target/release/PassGen.exe`。首次构建需要获取依赖，依赖准备好后可加 `--offline` 构建；应用运行时完全离线。
 
-对外提供的 Windows ZIP 使用静态 CRT 构建；默认 Cargo 构建不保证消除 VC++ 运行库依赖。原测试包及静态构建方式见[开发与验证](docs/development.md#便携测试包)，版本变化见[更新记录](CHANGELOG.md)。
+对外提供的 Windows EXE 使用静态 CRT 构建；默认 Cargo 构建不保证消除 VC++ 运行库依赖。原测试包及静态构建方式见[开发与验证](docs/development.md#便携测试包)，版本变化见[更新记录](CHANGELOG.md)。
 
 ## 验证
 

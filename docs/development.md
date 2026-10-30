@@ -166,11 +166,13 @@ DB23F26BFAE48F93F522EDCBCD019240FCE1D40881E19CBD743D0A0A7C3A1FB7
 
 公开仓库为[PassGen](https://github.com/xinvii/PassGen)，默认分支main。源码使用[MIT](../LICENSE)；Slint桌面二进制选择Royalty-free 2.0，仓库及Release下载页展示官方署名徽标，字体和徽标保留独立许可，详见[第三方声明](../THIRD-PARTY-NOTICES.md)。
 
-首版附件命名为`PassGen-0.1.0-windows-x64.zip`，同时提供对应`.zip.sha256`和`PassGen.exe.sha256`。ZIP放在本地`target/releases/`，通过GitHub Release发布，不放入源码Git历史。包内附README、反馈表、验证记录、项目及第三方许可、全部文件校验值。
+首版最初提供`PassGen-0.1.0-windows-x64.zip`及其校验文件。2026-10-31按用户要求改为`PassGen.exe`、`PassGen.exe.sha256`和`PassGen-0.1.0-source.zip`；移除原程序ZIP及其校验附件，本地历史产物保留。源码附件包含当前发布说明和完整第三方许可，GitHub自动生成的Source code ZIP／tar.gz仍对应原始v0.1.0标签。未移动已有标签，也未改变应用EXE。
 
 发行包中的EXE与已验证测试版一致，仍为10,972,672字节，SHA-256为`DB23F26BFAE48F93F522EDCBCD019240FCE1D40881E19CBD743D0A0A7C3A1FB7`。不把此文件声称为从发布提交重新编译：包内`BINARY-BUILD-INFO.json`与`BINARY-BUILD-INPUTS.json`保留原始测试版的构建信息和输入哈希；新的`BUILD-INFO.json`另记发布源提交、标签、测试包来源及EXE字节一致性。发布整理只改变文档、包内说明、许可、徽标及Cargo授权／仓库元数据，不改变应用运行逻辑。
 
 版本说明见[发布说明](../packaging/windows/RELEASE-NOTES.md)和[更新记录](../CHANGELOG.md)。后续代码变更需要重新构建、验证及生成校验值，不能继续沿用本次测试结论。安装包、数字签名、Linux／macOS及完整显示器矩阵不在首版验证范围内。
+
+单文件发行的源码ZIP以main当前的文档／资源提交为快照，运行逻辑与v0.1.0相同，并附`SOURCE-RELEASE.json`记录快照提交及EXE原始标签提交。`third-party-licenses/`承载原程序包内完整依赖声明，`release-metadata/`保留二进制构建及验证记录，避免移除程序ZIP后丢失这些资料。顶部图片换为用户提供的Slint原图，Made with Slint署名移至许可区域。
 
 ## 版本控制范围
 

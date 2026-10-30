@@ -17,8 +17,8 @@ PassGen 自身的源码使用 [MIT License](LICENSE)。第三方组件、字体�
 
 ## Made with Slint 徽标
 
-`docs/assets/made-with-slint.png` 来自 SixtyFPS GmbH／Slint 官方的 `MadeWithSlint-logo-whitebg.png`，未修改。徽标使用 [CC BY-ND 4.0](LICENSES/Slint-logos-CC-BY-ND-4.0.txt)，归原作者所有，不受 PassGen 的 MIT 许可替代。
+`docs/assets/made-with-slint.png` 来自 SixtyFPS GmbH／Slint 官方的 `MadeWithSlint-logo-whitebg.png`，未修改。`docs/assets/slint-logo.png` 为用户提供的 Slint 品牌图片，同样保持原图。Slint 徽标归原作者 SixtyFPS GmbH／Slint 所有，使用 [CC BY-ND 4.0](LICENSES/Slint-logos-CC-BY-ND-4.0.txt)，不受 PassGen 的 MIT 许可替代。
 
 ## 其他依赖
 
-依赖版本由 `Cargo.lock` 固定。Windows 发行压缩包附带依赖组件清单、许可原文、字体许可和 Rust 标准库第三方声明，位于包内 `licenses/`。该清单保守包含构建依赖图中的过程宏依赖，不表示所有依赖代码都进入运行时。
+依赖版本由 `Cargo.lock` 固定。当前Release直接提供EXE和哈希文件；另附`PassGen-0.1.0-source.zip`，其`third-party-licenses/`包含依赖组件清单、许可原文、字体许可和Rust标准库第三方声明。该清单保守包含构建依赖图中的过程宏依赖，不表示所有依赖代码都进入运行时。原程序ZIP保留在本地历史产物中，不再作为Release附件提供。
