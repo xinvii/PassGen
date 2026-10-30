@@ -24,6 +24,7 @@ struct State {
     settings_path: Option<PathBuf>,
     saved_settings: Rc<Cell<Settings>>,
     save_timer: slint::Timer,
+    placement: crate::platform::window::Placement,
 }
 
 // Only debug builds can opt into deterministic, non-secret UI preview data.
@@ -56,6 +57,7 @@ impl Default for State {
             settings_path: None,
             saved_settings: Rc::new(Cell::new(Settings::default())),
             save_timer: slint::Timer::default(),
+            placement: crate::platform::window::Placement::default(),
         }
     }
 }
@@ -70,6 +72,7 @@ impl State {
             pin_length: settings.pin_length,
             settings_path: path,
             saved_settings: Rc::new(Cell::new(settings)),
+            placement: crate::platform::window::Placement::new(settings.window_position),
             ..Self::default()
         };
         for (index, selected) in settings.character_types.into_iter().enumerate() {
@@ -91,6 +94,7 @@ impl State {
             random_length: self.random_length,
             pin_length: self.pin_length,
             character_types: std::array::from_fn(|index| self.types.contains(index)),
+            window_position: self.placement.position(),
             ..Settings::default()
         }
     }
@@ -259,44 +263,20 @@ impl State {
 }
 
 pub fn run() -> Result<(), slint::PlatformError> {
-    slint::BackendSelector::new()
-        .backend_name("winit".into())
-        .renderer_name("software".into())
-        .with_winit_window_attributes_hook(crate::platform::window::attributes)
-        .select()?;
-    let ui = AppWindow::new()?;
-    ui.set_app_version(env!("CARGO_PKG_VERSION").into());
-    crate::chrome::connect(&ui);
-    {
-        let weak = ui.as_weak();
-        ui.on_begin_resize(move |direction| {
-            if let Some(ui) = weak.upgrade() {
-                crate::platform::window::begin_resize(ui.window(), direction);
-            }
-        });
-    }
-    {
-        let weak = ui.as_weak();
-        slint::spawn_local(async move {
-            if let Some(ui) = weak.upgrade() {
-                let _ = crate::platform::window::initialize(ui.window()).await;
-                crate::chrome::refresh(&ui);
-                ui.invoke_animate_window_size();
-            }
-        })
-        .map_err(|e| slint::PlatformError::Other(e.to_string()))?;
-    }
     #[cfg(debug_assertions)]
-    if std::env::args().any(|arg| arg == "--qa-preview" || arg == "--qa-snapshots") {
-        ui.set_qa_preview(true);
-    }
-    let settings_path = if ui.get_qa_preview() {
+    let preview = std::env::args().any(|arg| arg == "--qa-preview" || arg == "--qa-snapshots");
+    #[cfg(not(debug_assertions))]
+    let preview = false;
+    let settings_path = if preview {
         None
     } else {
         settings::default_path()
     };
     #[cfg(all(debug_assertions, feature = "ui-qa"))]
-    let settings_path = if ui.get_qa_preview() && crate::qa::settings_check_mode().is_some() {
+    let settings_path = if preview
+        && (crate::qa::settings_check_mode().is_some()
+            || crate::qa::position_check_mode().is_some())
+    {
         crate::qa::settings_test_path()
     } else {
         settings_path
@@ -305,6 +285,25 @@ pub fn run() -> Result<(), slint::PlatformError> {
         .as_deref()
         .map(settings::load)
         .unwrap_or_default();
+    let initial_position = preferences.window_position;
+    slint::BackendSelector::new()
+        .backend_name("winit".into())
+        .renderer_name("software".into())
+        .with_winit_window_attributes_hook(move |attributes| {
+            crate::platform::window::attributes(attributes, initial_position)
+        })
+        .select()?;
+    let ui = AppWindow::new()?;
+    ui.set_app_version(env!("CARGO_PKG_VERSION").into());
+    ui.set_qa_preview(preview);
+    {
+        let weak = ui.as_weak();
+        ui.on_begin_resize(move |direction| {
+            if let Some(ui) = weak.upgrade() {
+                crate::platform::window::begin_resize(ui.window(), direction);
+            }
+        });
+    }
     let state = Rc::new(RefCell::new(State::from_settings(
         preferences,
         settings_path,
@@ -313,6 +312,19 @@ pub fn run() -> Result<(), slint::PlatformError> {
     crate::motion::connect(&ui);
     // Choose the initial native height before showing the restored mode.
     ui.set_initial_page_height(ui.get_page_height());
+    let placement = state.borrow().placement.clone();
+    crate::chrome::connect(&ui, placement.clone());
+    {
+        let weak = ui.as_weak();
+        slint::spawn_local(async move {
+            if let Some(ui) = weak.upgrade() {
+                let _ = crate::platform::window::initialize(ui.window(), &placement).await;
+                crate::chrome::refresh(&ui);
+                ui.invoke_animate_window_size();
+            }
+        })
+        .map_err(|e| slint::PlatformError::Other(e.to_string()))?;
+    }
 
     {
         let (weak, state) = (ui.as_weak(), state.clone());
@@ -474,7 +486,9 @@ pub fn run() -> Result<(), slint::PlatformError> {
     state.borrow().sync(&ui, true);
     state.borrow_mut().generate(&ui);
     #[cfg(all(debug_assertions, feature = "ui-qa"))]
-    let qa_result = if let Some(write) = crate::qa::settings_check_mode() {
+    let qa_result = if let Some(mode) = crate::qa::position_check_mode() {
+        Some(crate::qa::start_position_check(&ui, mode))
+    } else if let Some(write) = crate::qa::settings_check_mode() {
         Some(crate::qa::start_settings_check(&ui, write))
     } else {
         std::env::args()
@@ -482,6 +496,7 @@ pub fn run() -> Result<(), slint::PlatformError> {
             .then(|| crate::qa::start(&ui))
     };
     let run_result = ui.run();
+    state.borrow().placement.capture_before_close(ui.window());
     ui.set_generated_password("".into());
     state.borrow_mut().secret = Zeroizing::new(String::new());
     state
@@ -492,6 +507,9 @@ pub fn run() -> Result<(), slint::PlatformError> {
     #[cfg(all(debug_assertions, feature = "ui-qa"))]
     if let Some(result) = qa_result {
         match result.borrow_mut().take() {
+            Some(Ok(())) if crate::qa::position_check_mode().is_some() => {
+                println!("Window position QA passed.")
+            }
             Some(Ok(())) if crate::qa::settings_check_mode().is_some() => {
                 println!("Settings restart QA passed.")
             }

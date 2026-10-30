@@ -136,7 +136,7 @@ export component AppWindow inherits Window {
                         height: 42px; background: Palette.neutral; border-radius: 15px;
                         Rectangle {
                             x: 6px + ((parent.width - 18px) / 2 + 6px) * root.pin-progress;
-                            y: 6px; width: (parent.width - 30px) / 2; height: 30px;
+                            y: 6px; width: (parent.width - 18px) / 2; height: 30px;
                             border-radius: 9px; background: Palette.surface;
                         }
                         HorizontalLayout {
@@ -156,8 +156,9 @@ export component AppWindow inherits Window {
                         }
                     }
                     HorizontalLayout {
-                        height: 30px; spacing: 12px;
+                        height: 30px; spacing: 12px; padding-left: 10px;
                         LengthSlider {
+                            enabled: !root.about;
                             value: root.length-value; maximum: root.pin ? 12 : 64;
                             changed(value) => { root.length-changed(value); }
                         }
@@ -218,11 +219,11 @@ export component AppWindow inherits Window {
                 VerticalLayout {
                     spacing: 10px;
                     Rectangle {
-                        width: 212px; height: 42px;
+                        width: 198px; height: 42px;
                         background: Palette.neutral; border-radius: 15px;
                         Rectangle {
                             x: 6px + 96px * root.language-progress; y: 6px;
-                            width: 90px + 14px * root.language-progress; height: 30px;
+                            width: 90px; height: 30px;
                             border-radius: 9px; background: Palette.surface;
                         }
                         HorizontalLayout {
@@ -233,7 +234,7 @@ export component AppWindow inherits Window {
                                 enabled: root.about; clicked => { root.language-changed(false); }
                             }
                             ActionButton {
-                                label: "简体中文"; width: 104px; label-family: "Noto Sans SC";
+                                label: "简体中文"; width: 90px; label-family: "Noto Sans SC";
                                 fill: transparent; ink: root.chinese ? Palette.brand : Palette.muted;
                                 enabled: root.about; clicked => { root.language-changed(true); }
                             }

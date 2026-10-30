@@ -28,6 +28,19 @@ pub enum Mode {
     Pin,
 }
 
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
+pub struct WindowPosition {
+    pub x: i32,
+    pub y: i32,
+}
+
+fn optional_position<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<Option<WindowPosition>, D::Error> {
+    let value = serde_json::Value::deserialize(deserializer)?;
+    Ok(serde_json::from_value(value).unwrap_or(None))
+}
+
 // Deliberately separate from app::State: never serialize passwords or UI state.
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Serialize)]
 #[serde(default)]
@@ -38,6 +51,12 @@ pub struct Settings {
     pub random_length: usize,
     pub pin_length: usize,
     pub character_types: [bool; 4],
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "optional_position"
+    )]
+    pub window_position: Option<WindowPosition>,
 }
 
 impl Default for Settings {
@@ -49,6 +68,7 @@ impl Default for Settings {
             random_length: 20,
             pin_length: 6,
             character_types: [true; 4],
+            window_position: None,
         }
     }
 }
@@ -129,6 +149,7 @@ mod tests {
                 random_length: 48,
                 pin_length: 10,
                 character_types: std::array::from_fn(|index| mask & (1 << index) != 0),
+                window_position: Some(WindowPosition { x: -1200, y: 180 }),
                 ..Settings::default()
             };
             save(&path, settings).unwrap();
@@ -174,7 +195,11 @@ mod tests {
 
     #[test]
     fn serialized_keys_are_only_non_secret_preferences() {
-        let value = serde_json::to_value(Settings::default()).unwrap();
+        let value = serde_json::to_value(Settings {
+            window_position: Some(WindowPosition { x: 100, y: 200 }),
+            ..Settings::default()
+        })
+        .unwrap();
         let mut keys: Vec<_> = value
             .as_object()
             .unwrap()
@@ -190,7 +215,8 @@ mod tests {
                 "mode",
                 "pin_length",
                 "random_length",
-                "version"
+                "version",
+                "window_position"
             ]
         );
     }
@@ -202,5 +228,31 @@ mod tests {
         fs::write(&path, "unchanged").unwrap();
         assert!(save(&path.join("settings.json"), Settings::default()).is_err());
         assert_eq!(fs::read_to_string(path).unwrap(), "unchanged");
+    }
+
+    #[test]
+    fn missing_or_invalid_position_preserves_existing_options() {
+        let folder = tempfile::tempdir().unwrap();
+        let path = folder.path().join("settings.json");
+        for position in [
+            None,
+            Some("null"),
+            Some("\"invalid\""),
+            Some(r#"{"x":1}"#),
+            Some(r#"{"x":999999999999,"y":2}"#),
+        ] {
+            let extra = position
+                .map(|p| format!(",\"window_position\":{p}"))
+                .unwrap_or_default();
+            fs::write(
+                &path,
+                format!("{{\"language\":\"en\",\"random_length\":32{extra}}}"),
+            )
+            .unwrap();
+            let settings = load(&path);
+            assert_eq!(settings.language, Language::English);
+            assert_eq!(settings.random_length, 32);
+            assert_eq!(settings.window_position, None);
+        }
     }
 }

@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2024"
 rust-version = "1.92"
 description = "A lightweight, offline password generator built with Rust and Slint"
+license = "MIT"
+repository = "https://github.com/xinvii/PassGen"
 publish = false
 
 [features]

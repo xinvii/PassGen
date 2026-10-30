@@ -8,6 +8,97 @@ use crate::AppWindow;
 
 type Outcome = Rc<RefCell<Option<Result<(), String>>>>;
 
+pub fn position_check_mode() -> Option<&'static str> {
+    ["write", "read", "center", "minimized"]
+        .into_iter()
+        .find(|mode| std::env::args().any(|arg| arg == format!("--qa-position-{mode}")))
+}
+
+pub fn start_position_check(ui: &AppWindow, mode: &'static str) -> Outcome {
+    use slint::winit_030::WinitWindowAccessor;
+    let outcome = Rc::new(RefCell::new(None));
+    let (weak, result) = (ui.as_weak(), outcome.clone());
+    slint::Timer::single_shot(Duration::from_millis(350), move || {
+        let Some(ui) = weak.upgrade() else { return };
+        let check = || -> Result<_, String> {
+            if !ui.get_qa_preview() || settings_test_path().is_none() {
+                return Err("Position QA requires a preview and an explicit test file".into());
+            }
+            ui.window()
+                .with_winit_window(|window| {
+                    use slint::winit_030::winit::dpi::PhysicalPosition;
+                    let actual = window.outer_position().map_err(|e| e.to_string())?;
+                    let expected = if mode == "read" {
+                        let saved = crate::platform::settings::load(&settings_test_path().unwrap())
+                            .window_position
+                            .ok_or("Position was not saved before close")?;
+                        PhysicalPosition::new(saved.x, saved.y)
+                    } else {
+                        let monitor = window.primary_monitor().ok_or("No primary monitor")?;
+                        let origin = monitor.position();
+                        let screen = monitor.size();
+                        let size = window.outer_size();
+                        PhysicalPosition::new(
+                            origin.x + (screen.width as i32 - size.width as i32) / 2,
+                            origin.y + (screen.height as i32 - size.height as i32) / 2,
+                        )
+                    };
+                    if (actual.x - expected.x).abs() > 2 || (actual.y - expected.y).abs() > 2 {
+                        return Err(format!(
+                            "Startup position {actual:?} did not match {expected:?}"
+                        ));
+                    }
+                    if mode == "write" || mode == "minimized" {
+                        let monitor = window.primary_monitor().ok_or("No primary monitor")?;
+                        let origin = monitor.position();
+                        let target = PhysicalPosition::new(origin.x + 80, origin.y + 90);
+                        window.set_outer_position(target);
+                        Ok(Some(target))
+                    } else {
+                        Ok(None)
+                    }
+                })
+                .ok_or_else(|| "Native window was unavailable".to_string())?
+        };
+        match check() {
+            Ok(Some(target)) => {
+                slint::Timer::single_shot(Duration::from_millis(150), move || {
+                    let checked = ui
+                        .window()
+                        .with_winit_window(|window| {
+                            let actual = window.outer_position().map_err(|e| e.to_string())?;
+                            if actual != target {
+                                return Err("Test move did not reach its target".into());
+                            }
+                            if mode == "minimized" {
+                                window.set_minimized(true);
+                            }
+                            Ok(())
+                        })
+                        .unwrap_or_else(|| Err("Native window was unavailable".into()));
+                    *result.borrow_mut() = Some(checked);
+                    slint::Timer::single_shot(Duration::from_millis(150), move || {
+                        if mode == "minimized"
+                            && ui
+                                .window()
+                                .with_winit_window(|window| window.is_minimized())
+                                != Some(Some(true))
+                        {
+                            *result.borrow_mut() = Some(Err("Test window did not minimize".into()));
+                        }
+                        let _ = slint::quit_event_loop();
+                    });
+                });
+            }
+            checked => {
+                *result.borrow_mut() = Some(checked.map(|_| ()));
+                let _ = slint::quit_event_loop();
+            }
+        }
+    });
+    outcome
+}
+
 pub fn settings_check_mode() -> Option<bool> {
     if std::env::args().any(|arg| arg == "--qa-settings-write") {
         Some(true)
@@ -190,6 +281,7 @@ fn check_callbacks(ui: &AppWindow) -> Result<(), String> {
     }
     ui.invoke_mode_changed(false);
     ui.invoke_length_changed(20);
+    check_slider_wheel(ui)?;
     // Exercise the explicit Copy action with synthetic preview data only.
     click(
         ui,
@@ -262,6 +354,79 @@ fn check_callbacks(ui: &AppWindow) -> Result<(), String> {
     if ui.get_generated_password() != displayed || ui.get_about() {
         return Err("Keyboard Back failed or changed the current Random password".into());
     }
+    Ok(())
+}
+
+fn check_slider_wheel(ui: &AppWindow) -> Result<(), String> {
+    let wheel = |x: f32, delta_x, delta_y| {
+        ui.window()
+            .dispatch_event_with_result(slint::platform::WindowEvent::PointerScrolled {
+                position: slint::LogicalPosition::new(
+                    ui.get_shadow_padding() + x,
+                    ui.get_shadow_padding() + 107.0,
+                ),
+                delta_x,
+                delta_y,
+            })
+            .map_err(|error| error.to_string())
+    };
+    for chinese in [false, true] {
+        ui.invoke_language_changed(chinese);
+        for pin in [false, true] {
+            ui.invoke_mode_changed(pin);
+            let initial = if pin { 6 } else { 20 };
+            let maximum = if pin { 12 } else { 64 };
+            ui.invoke_length_changed(initial);
+            wheel(100.0, 0.0, 60.0)?;
+            if ui.get_length_value() != initial + 1
+                || ui.get_length_text() != (initial + 1).to_string()
+                || ui
+                    .get_generated_password()
+                    .chars()
+                    .filter(|c| !c.is_whitespace())
+                    .count()
+                    != (initial + 1) as usize
+            {
+                return Err("Wheel up did not update length and regenerate the preview".into());
+            }
+            wheel(100.0, 0.0, -60.0)?;
+            wheel(100.0, 60.0, 0.0)?;
+            // The new 10px left inset is outside the slider's hit area.
+            wheel(15.0, 0.0, 60.0)?;
+            if ui.get_length_value() != initial {
+                return Err(
+                    "Wheel down, horizontal wheel, or slider hit area was incorrect".into(),
+                );
+            }
+            for (limit, delta) in [(4, -60.0), (maximum, 60.0)] {
+                ui.invoke_length_changed(limit);
+                ui.set_copied(true);
+                wheel(100.0, 0.0, delta)?;
+                if ui.get_length_value() != limit || !ui.get_copied() {
+                    return Err("Wheel escaped a length limit or regenerated at the limit".into());
+                }
+            }
+            ui.invoke_length_changed(initial);
+            wheel(100.0, 0.0, 60.0)?;
+        }
+        ui.invoke_mode_changed(false);
+        if ui.get_length_value() != 21 {
+            return Err("Wheel changes did not preserve the separate Random length".into());
+        }
+        ui.invoke_mode_changed(true);
+        if ui.get_length_value() != 7 {
+            return Err("Wheel changes did not preserve the separate PIN length".into());
+        }
+    }
+    ui.set_about(true);
+    wheel(100.0, 0.0, 60.0)?;
+    if ui.get_length_value() != 7 {
+        return Err("Hidden generator accepted wheel input while opening About".into());
+    }
+    ui.set_about(false);
+    ui.invoke_length_changed(6);
+    ui.invoke_mode_changed(false);
+    ui.invoke_length_changed(20);
     Ok(())
 }
 
@@ -402,11 +567,24 @@ fn capture_next(weak: slint::Weak<AppWindow>, scene: usize, outcome: Outcome) {
             let right = pixels.as_slice()[offset * width + width - offset - 1];
             let shadow_x = ((ui.get_shadow_padding() - 6.0) * scale).round() as usize;
             let shadow = pixels.as_slice()[pixels.height() as usize / 2 * width + shadow_x];
+            let card_width = width as f32 / scale - 2.0 * ui.get_shadow_padding();
+            let border_x = match scene {
+                10 => card_width - 67.0,
+                11 => card_width - 34.0,
+                _ => card_width / 2.0,
+            };
+            let border_x = ((ui.get_shadow_padding() + border_x) * scale).round() as usize;
+            let border_y = (ui.get_shadow_padding() * scale).round() as usize;
+            let border = pixels.as_slice()[border_y * width + border_x];
             left.a < 100
                 && right.a < 100
                 && shadow.a > 8
                 && shadow.a < 100
                 && pixels.as_slice()[0].a == 0
+                && border.r == 220
+                && border.g == 225
+                && border.b == 234
+                && border.a == 255
         });
         if !corners_clear {
             *outcome.borrow_mut() = Some(Err(

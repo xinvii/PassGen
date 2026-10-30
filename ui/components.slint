@@ -108,7 +108,7 @@ export component WindowButton inherits Rectangle {
     accessible-action-default => { root.clicked(); }
     height: 30px;
     Rectangle {
-        width: root.width; height: root.height;
+        y: 1px; width: root.width; height: root.height - 1px;
         visible: root.show-feedback && !root.destructive;
         background: root.pressed ? #d2d9e4 : #e3e7ef;
         opacity: root.hovered || root.pressed ? 1 : 0;
@@ -140,6 +140,7 @@ export component WindowButton inherits Rectangle {
 
 export component LengthSlider inherits Rectangle {
     in property <int> value;
+    in property <bool> enabled: true;
     in property <int> minimum: 4;
     in property <int> maximum: 64;
     callback changed(int);
@@ -178,6 +179,7 @@ export component LengthSlider inherits Rectangle {
         }
     }
     keyboard := FocusScope {
+        enabled: root.enabled;
         key-pressed(event) => {
             if event.text == Key.LeftArrow || event.text == Key.DownArrow {
                 root.changed(max(root.minimum, root.value - 1)); return accept;
@@ -189,7 +191,19 @@ export component LengthSlider inherits Rectangle {
         }
     }
     touch := TouchArea {
+        enabled: root.enabled;
         mouse-cursor: pointer;
+        scroll-event(event) => {
+            if event.delta-y > 0px {
+                root.changed(min(root.maximum, root.value + 1));
+                return accept;
+            }
+            if event.delta-y < 0px {
+                root.changed(max(root.minimum, root.value - 1));
+                return accept;
+            }
+            return reject;
+        }
         pointer-event(event) => {
             if event.kind == PointerEventKind.down {
                 keyboard.focus();
