@@ -88,6 +88,8 @@
 
 37. **去除重复源码附件（2026-10-31）**：用户指出额外上传的`PassGen-0.1.0-source.zip`与GitHub自动生成的源码下载重复，移除该手动附件，仅保留EXE、对应哈希及自动源码ZIP／tar.gz。额外源码包保留本地副本，完整第三方许可移入仓库`LICENSES/third-party`并从Release链接。同步当前发布文档，不改变EXE、v0.1.0标签或应用逻辑。
 
+38. **Release图片与署名位置澄清（2026-10-31）**：用户再次要求使用提供的图片。复核Slint Royalty-free 2.0第2(b)条，公开网页展示官方徽标即可，下载页为优先建议，不要求仓库首页和每个Release重复。修正此前过严的解释，Release仅保留用户提供的Slint品牌原图，移除许可区域重复徽标并链接仓库首页；首页继续展示官方Made with Slint署名。不同用途不混同，不修改图片、EXE、附件或v0.1.0标签。
+
 ## 当前布局规范
 
 本轮Windows代码已对齐精简版，二十三项核心／状态／动画／外观／设置／位置测试、十四个示例界面场景及中英文滚轮事件检查通过。四个保存／重启场景和五个窗口位置场景已在位置记忆版本通过。最新独立程序为PassGen-Wheel.exe，旧的Shadow、Compact、WindowButtons、Icon、UIUpdate、ClickRefresh、Remember、FigmaShadow、Border、Position程序保留为历史版本。

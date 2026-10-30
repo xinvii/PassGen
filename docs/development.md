@@ -164,7 +164,7 @@ DB23F26BFAE48F93F522EDCBCD019240FCE1D40881E19CBD743D0A0A7C3A1FB7
 
 2026-10-31，用户反馈已在没有开发工具的Windows10和Windows11环境测试使用，未发现问题。这是用户实机反馈；未提供系统具体构建号、CPU架构和完整DPI／多显示器矩阵，不补写未执行的测试。
 
-公开仓库为[PassGen](https://github.com/xinvii/PassGen)，默认分支main。源码使用[MIT](../LICENSE)；Slint桌面二进制选择Royalty-free 2.0，仓库及Release下载页展示官方署名徽标，字体和徽标保留独立许可，详见[第三方声明](../THIRD-PARTY-NOTICES.md)。
+公开仓库为[PassGen](https://github.com/xinvii/PassGen)，默认分支main。源码使用[MIT](../LICENSE)；Slint桌面二进制选择Royalty-free 2.0，公开仓库首页展示官方署名徽标，Release许可区域链接该页面，字体和徽标保留独立许可，详见[第三方声明](../THIRD-PARTY-NOTICES.md)。
 
 首版最初提供`PassGen-0.1.0-windows-x64.zip`及其校验文件，随后改为EXE、哈希及额外源码ZIP。2026-10-31用户要求去除重复源码附件，当前只手动上传`PassGen.exe`和`PassGen.exe.sha256`；源码使用GitHub自动生成的Source code ZIP／tar.gz，对应原始v0.1.0标签。被移除的附件在本地保留，未移动已有标签，也未改变应用EXE。
 
@@ -172,7 +172,7 @@ DB23F26BFAE48F93F522EDCBCD019240FCE1D40881E19CBD743D0A0A7C3A1FB7
 
 版本说明见[发布说明](../packaging/windows/RELEASE-NOTES.md)和[更新记录](../CHANGELOG.md)。后续代码变更需要重新构建、验证及生成校验值，不能继续沿用本次测试结论。安装包、数字签名、Linux／macOS及完整显示器矩阵不在首版验证范围内。
 
-已移除的额外源码ZIP以`dbbb18f`为快照，运行逻辑与v0.1.0相同，`SOURCE-RELEASE.json`记录快照提交及EXE原始标签提交，`release-metadata/`保留二进制构建及验证记录。完整依赖声明同时保存在仓库[LICENSES/third-party](../LICENSES/third-party/README.md)：逐文件保留许可内容并汇总为文本，组件清单和Rust标准库声明保持原始字节。GitHub自动生成的v0.1.0源码包仍是原标签快照，不包含后来添加的文档和许可汇总，Release中单独链接当前许可目录。顶部图片为用户提供的Slint原图，Made with Slint署名在许可区域。
+已移除的额外源码ZIP以`dbbb18f`为快照，运行逻辑与v0.1.0相同，`SOURCE-RELEASE.json`记录快照提交及EXE原始标签提交，`release-metadata/`保留二进制构建及验证记录。完整依赖声明同时保存在仓库[LICENSES/third-party](../LICENSES/third-party/README.md)：逐文件保留许可内容并汇总为文本，组件清单和Rust标准库声明保持原始字节。GitHub自动生成的v0.1.0源码包仍是原标签快照，不包含后来添加的文档和许可汇总，Release中单独链接当前许可目录。Release仅展示用户提供的Slint原图，Made with Slint署名保留在仓库首页；按第2(b)条的公开网页署名方案，不要求每页重复展示。
 
 ## 版本控制范围
 

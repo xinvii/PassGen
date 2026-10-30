@@ -34,6 +34,4 @@ DB23F26BFAE48F93F522EDCBCD019240FCE1D40881E19CBD743D0A0A7C3A1FB7
 
 ## 许可
 
-[![Made with Slint](https://raw.githubusercontent.com/xinvii/PassGen/2cbefa829000101bbeb4e7b91a541401a324ac20/docs/assets/made-with-slint.png)](https://slint.dev)
-
-PassGen自身源码为MIT；Slint使用Royalty-free 2.0，官方署名徽标展示于本下载页。字体、徽标及其他依赖保留独立许可。完整依赖许可保留在[仓库许可目录](https://github.com/xinvii/PassGen/tree/main/LICENSES/third-party)；详见[第三方声明](https://github.com/xinvii/PassGen/blob/main/THIRD-PARTY-NOTICES.md)。
+PassGen自身源码为MIT；Slint使用Royalty-free 2.0，官方署名徽标展示于[仓库首页](https://github.com/xinvii/PassGen#readme)。字体、徽标及其他依赖保留独立许可。完整依赖许可保留在[仓库许可目录](https://github.com/xinvii/PassGen/tree/main/LICENSES/third-party)；详见[第三方声明](https://github.com/xinvii/PassGen/blob/main/THIRD-PARTY-NOTICES.md)。
