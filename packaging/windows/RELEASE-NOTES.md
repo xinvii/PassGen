@@ -1,7 +1,5 @@
 首个 Windows x64 便携版本，使用 Rust + Slint 构建，运行时完全离线。
 
-<img src="https://raw.githubusercontent.com/xinvii/PassGen/main/docs/assets/slint-logo.png" alt="Slint" width="285">
-
 ## 下载与运行
 
 下载下方 `PassGen.exe`，双击即可运行，无需安装。无需 Rust、Visual Studio、WebView 或额外 VC++ 运行库；无需管理员权限。
@@ -34,4 +32,4 @@ DB23F26BFAE48F93F522EDCBCD019240FCE1D40881E19CBD743D0A0A7C3A1FB7
 
 ## 许可
 
-PassGen自身源码为MIT；Slint使用Royalty-free 2.0，官方署名徽标展示于[仓库首页](https://github.com/xinvii/PassGen#readme)。字体、徽标及其他依赖保留独立许可。完整依赖许可保留在[仓库许可目录](https://github.com/xinvii/PassGen/tree/main/LICENSES/third-party)；详见[第三方声明](https://github.com/xinvii/PassGen/blob/main/THIRD-PARTY-NOTICES.md)。
+PassGen自身源码为MIT；Slint使用Royalty-free 2.0。字体、徽标及其他依赖保留独立许可。完整依赖许可保留在[仓库许可目录](https://github.com/xinvii/PassGen/tree/main/LICENSES/third-party)；详见[第三方声明](https://github.com/xinvii/PassGen/blob/main/THIRD-PARTY-NOTICES.md)。

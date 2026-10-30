@@ -2,7 +2,7 @@
 
 使用 Rust + Slint 构建的轻量桌面随机密码生成器。应用完全离线，不保存、记录或传输生成的密码。
 
-[![Made with Slint](docs/assets/made-with-slint.png)](https://slint.dev)
+<a href="https://slint.dev"><img src="docs/assets/slint-logo.png" alt="Slint" width="285"></a>
 
 ## 下载
 

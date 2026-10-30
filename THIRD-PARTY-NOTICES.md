@@ -6,7 +6,7 @@ PassGen 自身的源码使用 [MIT License](LICENSE)。第三方组件、字体�
 
 本项目使用 Slint 1.18.1。此 Windows 桌面发行版选择 **Slint Royalty-free Desktop, Mobile, and Web Applications License 2.0**，全文见 [Slint 许可](LICENSES/Slint-Royalty-free-2.0.md)。
 
-公开的[仓库首页](https://github.com/xinvii/PassGen#readme)展示官方 Made with Slint 徽标，作为该许可第2(b)条的网页署名。该条要求在一个公开网页展示徽标，优先建议下载页，不要求每个页面重复展示；Release 使用用户提供的 Slint 品牌图片，并链接仓库首页的官方署名。重新分发二进制文件时，应继续按照所选择的 Slint 许可履行署名或其他义务；不能仅因 PassGen 源码为 MIT 就将 Slint 重新许可为 MIT。
+仓库首页使用用户提供的 Slint 品牌图片，Release 不展示图片。Slint 的许可条件不随图片调整改变。重新分发二进制文件时，应继续按照所选择的 Slint 许可履行署名或其他义务；不能仅因 PassGen 源码为 MIT 就将 Slint 重新许可为 MIT。
 
 - [Slint 官方许可说明](https://github.com/slint-ui/slint/blob/master/FAQ.md#licensing)
 - [Made with Slint 徽标来源与品牌指南](https://github.com/slint-ui/slint/tree/master/logo)

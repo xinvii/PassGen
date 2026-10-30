@@ -18,8 +18,8 @@ PassGen 是现代、轻量、完全离线的跨平台随机密码生成器。
 - 控制依赖数量、包体积与内存占用。空闲时避免后台轮询、持续动画和无意义重绘。
 - 优先复用已有结构；应用初始化时再按实际需要建立 `src/core/`、`src/platform/`、`ui/` 等目录。
 - 文档分工：README说明使用及设置位置；`docs/implementation.md`说明架构与行为；`docs/development.md`记录构建、隔离检查和验证版本；`docs/design-history.md`保留设计迭代。更新当前说明时不要把历史阶段的限制写成当前状态。
-- PassGen自身源码使用用户选定的MIT；Slint桌面二进制选择Royalty-free 2.0，字体和官方徽标独立许可。保留LICENSE、LICENSES和THIRD-PARTY-NOTICES.md；公开的仓库首页展示未修改的官方Made with Slint徽标。按第2(b)条在一个公开网页展示署名，下载页为优先建议，不要求每页重复；普通Slint品牌图片不单独替代署名徽标。不得把整个依赖集合都标为MIT。
-- 首个Release当前仅手动上传PassGen.exe和PassGen.exe.sha256；源码使用GitHub自动生成的ZIP／tar.gz，不重复上传源码ZIP。完整第三方许可保留在LICENSES/third-party，原程序ZIP、其校验及额外源码ZIP仅作本地历史产物，不移动v0.1.0标签。Release仅使用用户提供的Slint原图（285px显示宽），许可区域链接仓库首页的官方署名，不重复展示徽标。
+- PassGen自身源码使用用户选定的MIT；Slint桌面二进制选择Royalty-free 2.0，字体和徽标独立许可。保留LICENSE、LICENSES和THIRD-PARTY-NOTICES.md，不得把整个依赖集合都标为MIT。用户明确要求首页直接使用其提供的Slint原图，不将官方Made with Slint徽标移到其他页面展示；此图片调整不更改第三方许可条件，不宣称普通品牌图片已获上游认可为官方署名徽标。
+- 首个Release当前仅手动上传PassGen.exe和PassGen.exe.sha256；源码使用GitHub自动生成的ZIP／tar.gz，不重复上传源码ZIP。完整第三方许可保留在LICENSES/third-party，原程序ZIP、其校验及额外源码ZIP仅作本地历史产物，不移动v0.1.0标签。首页使用用户提供的Slint原图（285px显示宽），Release不展示图片；不再增加官方徽标展示页。
 
 ## 密码与隐私
 
