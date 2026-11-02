@@ -5,12 +5,13 @@ use zeroize::Zeroizing;
 pub const MIN_LENGTH: usize = 4;
 pub const MAX_RANDOM_LENGTH: usize = 64;
 pub const MAX_PIN_LENGTH: usize = 12;
+pub const SYMBOLS: &str = "~!@#$%^&*()_+";
 
 const GROUPS: [&[u8]; 4] = [
     b"abcdefghijklmnopqrstuvwxyz",
     b"ABCDEFGHIJKLMNOPQRSTUVWXYZ",
     b"0123456789",
-    b"!@#$",
+    SYMBOLS.as_bytes(),
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -133,6 +134,25 @@ mod tests {
             assert_eq!(password.len(), 64);
             assert!(password.bytes().all(|b| types.alphabet().contains(&b)));
         }
+    }
+
+    #[test]
+    fn symbols_only_can_generate_every_supported_symbol_and_nothing_else() {
+        let expected = b"~!@#$%^&*()_+";
+        let password = generate_with(
+            MAX_RANDOM_LENGTH,
+            false,
+            CharacterTypes(0b1000),
+            &mut Sequence(0),
+        )
+        .unwrap();
+        assert_eq!(password.len(), MAX_RANDOM_LENGTH);
+        assert!(password.bytes().all(|byte| expected.contains(&byte)));
+        assert!(
+            expected
+                .iter()
+                .all(|byte| password.as_bytes().contains(byte))
+        );
     }
 
     #[test]

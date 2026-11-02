@@ -9,8 +9,9 @@ pub fn attributes(
     attributes: WindowAttributes,
     position: Option<WindowPosition>,
 ) -> WindowAttributes {
-    let attributes =
-        attributes.with_enabled_buttons(WindowButtons::CLOSE | WindowButtons::MINIMIZE);
+    let attributes = attributes
+        .with_enabled_buttons(WindowButtons::CLOSE | WindowButtons::MINIMIZE)
+        .with_decorations(false);
     let attributes = if let Some(position) = position {
         attributes.with_position(PhysicalPosition::new(position.x, position.y))
     } else {
@@ -56,7 +57,10 @@ pub async fn initialize(
     // Apply the requested button set once the native window has actually been created.
     let native = window.winit_window().await?;
     native.set_enabled_buttons(WindowButtons::CLOSE | WindowButtons::MINIMIZE);
+    #[cfg(not(target_os = "windows"))]
     placement.place_initial(&native);
+    #[cfg(target_os = "windows")]
+    let _ = placement;
     Ok(())
 }
 
@@ -66,6 +70,39 @@ struct Screen {
     y: i32,
     width: u32,
     height: u32,
+}
+
+#[derive(Clone, Copy)]
+struct Insets {
+    left: u32,
+    top: u32,
+    right: u32,
+    bottom: u32,
+    legacy: u32,
+}
+impl Insets {
+    fn scaled(scale: f64) -> Self {
+        let px = |value: f32| (f64::from(value) * scale).round() as u32;
+        Self {
+            left: px(crate::chrome::LEFT),
+            top: px(crate::chrome::TOP),
+            right: px(crate::chrome::RIGHT),
+            bottom: px(crate::chrome::BOTTOM),
+            legacy: (36.0 * scale).round() as u32,
+        }
+    }
+    fn decode(self, p: WindowPosition) -> WindowPosition {
+        WindowPosition {
+            x: coordinate(i64::from(p.x) + i64::from(self.legacy) - i64::from(self.left)),
+            y: coordinate(i64::from(p.y) + i64::from(self.legacy) - i64::from(self.top)),
+        }
+    }
+    fn encode(self, p: WindowPosition) -> WindowPosition {
+        WindowPosition {
+            x: coordinate(i64::from(p.x) - i64::from(self.legacy) + i64::from(self.left)),
+            y: coordinate(i64::from(p.y) - i64::from(self.legacy) + i64::from(self.top)),
+        }
+    }
 }
 
 fn screens(window: &Window) -> (Vec<Screen>, usize) {
@@ -90,11 +127,11 @@ fn screens(window: &Window) -> (Vec<Screen>, usize) {
     )
 }
 
-fn overlap(position: WindowPosition, size: (u32, u32), padding: u32, screen: Screen) -> u64 {
-    let x = i64::from(position.x) + i64::from(padding);
-    let y = i64::from(position.y) + i64::from(padding);
-    let width = i64::from(size.0.saturating_sub(2 * padding));
-    let height = i64::from(size.1.saturating_sub(2 * padding));
+fn overlap(position: WindowPosition, size: (u32, u32), padding: Insets, screen: Screen) -> u64 {
+    let x = i64::from(position.x) + i64::from(padding.left);
+    let y = i64::from(position.y) + i64::from(padding.top);
+    let width = i64::from(size.0.saturating_sub(padding.left + padding.right));
+    let height = i64::from(size.1.saturating_sub(padding.top + padding.bottom));
     let horizontal = ((x + width).min(i64::from(screen.x) + i64::from(screen.width))
         - x.max(i64::from(screen.x)))
     .max(0);
@@ -113,10 +150,10 @@ fn initial_position(
     screens: &[Screen],
     primary: usize,
     size: (u32, u32),
-    padding: u32,
+    padding: Insets,
 ) -> Option<WindowPosition> {
     let fallback = *screens.get(primary).or_else(|| screens.first())?;
-    let target = saved.and_then(|position| {
+    let target = saved.map(|p| padding.decode(p)).and_then(|position| {
         screens
             .iter()
             .copied()
@@ -129,23 +166,31 @@ fn initial_position(
         (
             WindowPosition {
                 x: coordinate(
-                    i64::from(fallback.x) + (i64::from(fallback.width) - i64::from(size.0)) / 2,
+                    i64::from(fallback.x)
+                        + (i64::from(fallback.width) - i64::from(size.0)
+                            + i64::from(padding.right)
+                            - i64::from(padding.left))
+                            / 2,
                 ),
                 y: coordinate(
-                    i64::from(fallback.y) + (i64::from(fallback.height) - i64::from(size.1)) / 2,
+                    i64::from(fallback.y)
+                        + (i64::from(fallback.height) - i64::from(size.1)
+                            + i64::from(padding.bottom)
+                            - i64::from(padding.top))
+                            / 2,
                 ),
             },
             fallback,
         )
     });
     // Fit the visible card, allowing its transparent shadow margin off-screen.
-    let minimum_x = i64::from(screen.x) - i64::from(padding);
-    let minimum_y = i64::from(screen.y) - i64::from(padding);
+    let minimum_x = i64::from(screen.x) - i64::from(padding.left);
+    let minimum_y = i64::from(screen.y) - i64::from(padding.top);
     let maximum_x = (i64::from(screen.x) + i64::from(screen.width) - i64::from(size.0)
-        + i64::from(padding))
+        + i64::from(padding.right))
     .max(minimum_x);
     let maximum_y = (i64::from(screen.y) + i64::from(screen.height) - i64::from(size.1)
-        + i64::from(padding))
+        + i64::from(padding.bottom))
     .max(minimum_y);
     Some(WindowPosition {
         x: coordinate(i64::from(position.x).clamp(minimum_x, maximum_x)),
@@ -171,7 +216,7 @@ impl Placement {
         self.position.get()
     }
 
-    fn place_initial(&self, window: &Window) {
+    pub(crate) fn place_initial(&self, window: &Window) {
         if self.initialized.get() {
             return;
         }
@@ -180,7 +225,7 @@ impl Placement {
             return;
         }
         let (screens, primary) = screens(window);
-        let padding = (f64::from(crate::chrome::PADDING) * window.scale_factor()).round() as u32;
+        let padding = Insets::scaled(window.scale_factor());
         let position = initial_position(
             self.position.get(),
             &screens,
@@ -191,7 +236,7 @@ impl Placement {
         self.initialized.set(true);
         if let Some(position) = position {
             window.set_outer_position(PhysicalPosition::new(position.x, position.y));
-            self.position.set(Some(position));
+            self.position.set(Some(padding.encode(position)));
         }
         self.capture(window);
     }
@@ -206,14 +251,13 @@ impl Placement {
                 y: position.y,
             };
             let size = window.outer_size();
-            let padding =
-                (f64::from(crate::chrome::PADDING) * window.scale_factor()).round() as u32;
+            let padding = Insets::scaled(window.scale_factor());
             if screens(window)
                 .0
                 .iter()
                 .any(|screen| overlap(position, (size.width, size.height), padding, *screen) > 0)
             {
-                self.position.set(Some(position));
+                self.position.set(Some(padding.encode(position)));
             }
         }
     }
@@ -224,6 +268,7 @@ impl Placement {
                 event,
                 WindowEvent::Resized(_) | WindowEvent::RedrawRequested
             ) {
+                #[cfg(not(target_os = "windows"))]
                 self.place_initial(window);
             }
             if matches!(event, WindowEvent::Moved(_) | WindowEvent::CloseRequested) {
@@ -244,6 +289,11 @@ pub fn logical_width(window: &slint::Window) -> f32 {
         .unwrap_or_else(|| window.size().to_logical(window.scale_factor()).width)
 }
 
+#[cfg(all(debug_assertions, feature = "ui-qa"))]
+pub(crate) fn native_position(saved: WindowPosition, scale: f64) -> WindowPosition {
+    Insets::scaled(scale).decode(saved)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -256,10 +306,17 @@ mod tests {
 
     #[test]
     fn first_launch_centers_each_page_and_scaled_window() {
-        for size in [(422, 335), (422, 305), (422, 222), (844, 670)] {
-            let position = initial_position(None, &[PRIMARY], 0, size, 36).unwrap();
+        for size in [(394, 307), (394, 277), (394, 194), (788, 614)] {
+            let padding = Insets::scaled(if size.0 == 788 { 2.0 } else { 1.0 });
+            let position = initial_position(None, &[PRIMARY], 0, size, padding).unwrap();
             assert!((2 * position.x + size.0 as i32 - 1920).abs() <= 1);
-            assert!((2 * position.y + size.1 as i32 - 1080).abs() <= 1);
+            assert!(
+                (2 * position.y + size.1 as i32 + padding.top as i32
+                    - padding.bottom as i32
+                    - 1080)
+                    .abs()
+                    <= 1
+            );
         }
     }
 
@@ -271,8 +328,14 @@ mod tests {
         };
         let saved = WindowPosition { x: -1600, y: 170 };
         assert_eq!(
-            initial_position(Some(saved), &[PRIMARY, left], 0, (633, 503), 54),
-            Some(saved)
+            initial_position(
+                Some(saved),
+                &[PRIMARY, left],
+                0,
+                (591, 461),
+                Insets::scaled(1.5)
+            ),
+            Some(WindowPosition { x: -1579, y: 200 })
         );
     }
 
@@ -280,23 +343,26 @@ mod tests {
     fn missing_monitor_recenters_and_partial_position_is_fitted() {
         let saved = WindowPosition { x: 6000, y: -2000 };
         assert_eq!(
-            initial_position(Some(saved), &[PRIMARY], 0, (422, 335), 36),
-            initial_position(None, &[PRIMARY], 0, (422, 335), 36)
+            initial_position(Some(saved), &[PRIMARY], 0, (394, 307), Insets::scaled(1.0)),
+            initial_position(None, &[PRIMARY], 0, (394, 307), Insets::scaled(1.0))
         );
         let fitted = initial_position(
             Some(WindowPosition { x: 1800, y: 1000 }),
             &[PRIMARY],
             0,
-            (422, 335),
-            36,
+            (394, 307),
+            Insets::scaled(1.0),
         )
         .unwrap();
-        assert_eq!(fitted, WindowPosition { x: 1534, y: 781 });
+        assert_eq!(fitted, WindowPosition { x: 1548, y: 801 });
     }
 
     #[test]
     fn tiny_or_missing_screen_does_not_panic() {
-        assert_eq!(initial_position(None, &[], 0, (422, 335), 36), None);
+        assert_eq!(
+            initial_position(None, &[], 0, (394, 307), Insets::scaled(1.0)),
+            None
+        );
         let screen = Screen {
             x: 0,
             y: 0,
@@ -304,8 +370,26 @@ mod tests {
             height: 150,
         };
         assert_eq!(
-            initial_position(None, &[screen], 0, (422, 335), 36),
-            Some(WindowPosition { x: -36, y: -36 })
+            initial_position(None, &[screen], 0, (394, 307), Insets::scaled(1.0)),
+            Some(WindowPosition { x: -22, y: -16 })
         );
+    }
+
+    #[test]
+    fn changing_shadow_insets_preserves_legacy_visible_position() {
+        for scale in [1.0, 1.25, 1.5, 2.0] {
+            let padding = Insets::scaled(scale);
+            let saved = WindowPosition { x: -1200, y: 160 };
+            let actual = padding.decode(saved);
+            assert_eq!(
+                actual.x + padding.left as i32,
+                saved.x + padding.legacy as i32
+            );
+            assert_eq!(
+                actual.y + padding.top as i32,
+                saved.y + padding.legacy as i32
+            );
+            assert_eq!(padding.encode(actual), saved);
+        }
     }
 }

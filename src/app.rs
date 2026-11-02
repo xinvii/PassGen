@@ -175,19 +175,28 @@ impl State {
             ui.set_length_text(self.length().to_string().into());
             ui.set_length_invalid(false);
         }
+        let symbols_label = format!(
+            "{} ({})",
+            if ui.get_chinese() {
+                "特殊符号"
+            } else {
+                "Symbols"
+            },
+            core::SYMBOLS
+        );
         let labels = if ui.get_chinese() {
             [
                 "小写字母 (a-z)",
                 "大写字母 (A-Z)",
                 "数字 (0-9)",
-                "特殊符号 (!@#$)",
+                symbols_label.as_str(),
             ]
         } else {
             [
                 "Lowercase (a-z)",
                 "Uppercase (A-Z)",
                 "Numbers (0-9)",
-                "Symbols (!@#$)",
+                symbols_label.as_str(),
             ]
         };
         let short = ["a-z", "A-Z", "0-9", "!@#$"];
@@ -267,6 +276,16 @@ pub fn run() -> Result<(), slint::PlatformError> {
     let preview = std::env::args().any(|arg| arg == "--qa-preview" || arg == "--qa-snapshots");
     #[cfg(not(debug_assertions))]
     let preview = false;
+    let instance = match crate::platform::instance::Instance::acquire(preview).map_err(|error| {
+        slint::PlatformError::Other(format!("Unable to acquire instance lock: {error}"))
+    })? {
+        Some(instance) => Rc::new(instance),
+        None => return Ok(()),
+    };
+    #[cfg(target_os = "windows")]
+    let _startup = crate::platform::windows_startup::Startup::new().map_err(|error| {
+        slint::PlatformError::Other(format!("Unable to prepare window: {error}"))
+    })?;
     let settings_path = if preview {
         None
     } else {
@@ -286,16 +305,18 @@ pub fn run() -> Result<(), slint::PlatformError> {
         .map(settings::load)
         .unwrap_or_default();
     let initial_position = preferences.window_position;
-    slint::BackendSelector::new()
+    let backend = slint::BackendSelector::new()
         .backend_name("winit".into())
         .renderer_name("software".into())
         .with_winit_window_attributes_hook(move |attributes| {
             crate::platform::window::attributes(attributes, initial_position)
-        })
-        .select()?;
+        });
+    instance.configure(backend).select()?;
     let ui = AppWindow::new()?;
     ui.set_app_version(env!("CARGO_PKG_VERSION").into());
     ui.set_qa_preview(preview);
+    #[cfg(all(debug_assertions, feature = "ui-qa"))]
+    ui.set_qa_native_topmost(preview && std::env::args().any(|arg| arg == "--qa-hit-test"));
     {
         let weak = ui.as_weak();
         ui.on_begin_resize(move |direction| {
@@ -313,18 +334,34 @@ pub fn run() -> Result<(), slint::PlatformError> {
     // Choose the initial native height before showing the restored mode.
     ui.set_initial_page_height(ui.get_page_height());
     let placement = state.borrow().placement.clone();
-    crate::chrome::connect(&ui, placement.clone());
+    let chrome = crate::chrome::connect(&ui, placement.clone());
     {
         let weak = ui.as_weak();
+        let instance = instance.clone();
         slint::spawn_local(async move {
             if let Some(ui) = weak.upgrade() {
                 let _ = crate::platform::window::initialize(ui.window(), &placement).await;
+                instance.attach(ui.window());
                 crate::chrome::refresh(&ui);
                 ui.invoke_animate_window_size();
+                chrome.initialize(&ui);
+                #[cfg(all(not(target_os = "windows"), debug_assertions, feature = "ui-qa"))]
+                ui.invoke_native_initialized();
             }
         })
         .map_err(|e| slint::PlatformError::Other(e.to_string()))?;
     }
+
+    ui.on_open_project(move || {
+        #[cfg(all(debug_assertions, feature = "ui-qa"))]
+        if preview {
+            crate::qa::record_project_open();
+            return;
+        }
+        if let Err(error) = crate::platform::project::open() {
+            eprintln!("PassGen project link: {error}");
+        }
+    });
 
     {
         let (weak, state) = (ui.as_weak(), state.clone());
@@ -486,7 +523,9 @@ pub fn run() -> Result<(), slint::PlatformError> {
     state.borrow().sync(&ui, true);
     state.borrow_mut().generate(&ui);
     #[cfg(all(debug_assertions, feature = "ui-qa"))]
-    let qa_result = if let Some(mode) = crate::qa::position_check_mode() {
+    let qa_result = if std::env::args().any(|arg| arg == "--qa-instance-check") {
+        Some(crate::qa::start_instance_check(&ui))
+    } else if let Some(mode) = crate::qa::position_check_mode() {
         Some(crate::qa::start_position_check(&ui, mode))
     } else if let Some(write) = crate::qa::settings_check_mode() {
         Some(crate::qa::start_settings_check(&ui, write))
@@ -507,6 +546,11 @@ pub fn run() -> Result<(), slint::PlatformError> {
     #[cfg(all(debug_assertions, feature = "ui-qa"))]
     if let Some(result) = qa_result {
         match result.borrow_mut().take() {
+            Some(Ok(())) if std::env::args().any(|arg| arg == "--qa-instance-check") => {
+                println!(
+                    "Single-instance QA passed: first-frame cloak, four repeat launches, restore, one window."
+                )
+            }
             Some(Ok(())) if crate::qa::position_check_mode().is_some() => {
                 println!("Window position QA passed.")
             }

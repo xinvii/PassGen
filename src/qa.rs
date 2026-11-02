@@ -6,7 +6,107 @@ use slint::{ComponentHandle, Model};
 
 use crate::AppWindow;
 
+thread_local! { static PROJECT_OPENS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) }; }
+thread_local! { static NATIVE_FRAMES: std::cell::Cell<u64> = const { std::cell::Cell::new(0) }; }
+pub fn record_native_frame() {
+    NATIVE_FRAMES.with(|n| n.set(n.get() + 1));
+}
+pub fn record_project_open() {
+    PROJECT_OPENS.with(|n| n.set(n.get() + 1));
+}
+
 type Outcome = Rc<RefCell<Option<Result<(), String>>>>;
+
+// Startup chrome may take longer than the timer on a loaded machine. Arm QA
+// from actual native initialization, rather than racing the window future.
+fn after_native_initialized(
+    ui: &AppWindow,
+    delay: Duration,
+    action: impl FnOnce(AppWindow) + 'static,
+) {
+    let weak = ui.as_weak();
+    let action = RefCell::new(Some(action));
+    ui.on_native_initialized(move || {
+        let Some(action) = action.borrow_mut().take() else {
+            return;
+        };
+        let weak = weak.clone();
+        slint::Timer::single_shot(delay, move || {
+            if let Some(ui) = weak.upgrade() {
+                action(ui);
+            }
+        });
+    });
+}
+
+pub fn start_instance_check(ui: &AppWindow) -> Outcome {
+    let outcome = Rc::new(RefCell::new(None));
+    let result = outcome.clone();
+    after_native_initialized(ui, Duration::from_millis(250), move |ui| {
+        #[cfg(target_os = "windows")]
+        {
+            use slint::winit_030::WinitWindowAccessor;
+            let check = (|| -> Result<(), String> {
+                if !ui.get_qa_preview() {
+                    return Err("Instance QA requires preview data".into());
+                }
+                crate::platform::windows_startup::check_first_frame()?;
+                if crate::platform::instance::preview_window_count() != 1 {
+                    return Err("Expected one initial preview window".into());
+                }
+                ui.window()
+                    .with_winit_window(|window| window.set_minimized(true));
+                let executable = std::env::current_exe().map_err(|e| e.to_string())?;
+                let mut children = Vec::new();
+                for _ in 0..4 {
+                    children.push(
+                        std::process::Command::new(&executable)
+                            .arg("--qa-preview")
+                            .spawn()
+                            .map_err(|e| e.to_string())?,
+                    );
+                }
+                for mut child in children {
+                    if !child.wait().map_err(|e| e.to_string())?.success() {
+                        return Err("A repeated launch did not exit successfully".into());
+                    }
+                }
+                Ok(())
+            })();
+            if let Err(error) = check {
+                *result.borrow_mut() = Some(Err(error));
+                let _ = slint::quit_event_loop();
+                return;
+            }
+            let displayed = ui.get_generated_password();
+            slint::Timer::single_shot(Duration::from_millis(400), move || {
+                let restored = ui
+                    .window()
+                    .with_winit_window(|window| window.is_minimized())
+                    == Some(Some(false));
+                *result.borrow_mut() = Some(if !restored {
+                    Err("Repeated launch did not restore the existing minimized window".into())
+                } else if crate::platform::instance::preview_window_count() != 1 {
+                    Err("Repeated launch created another main window".into())
+                } else if ui.get_generated_password() != displayed {
+                    Err("Repeated launch changed the current result".into())
+                } else {
+                    Ok(())
+                });
+                let _ = slint::quit_event_loop();
+            });
+        }
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = ui;
+            *result.borrow_mut() = Some(Err(
+                "Windows instance QA is unavailable on this platform".into()
+            ));
+            let _ = slint::quit_event_loop();
+        }
+    });
+    outcome
+}
 
 pub fn position_check_mode() -> Option<&'static str> {
     ["write", "read", "center", "minimized"]
@@ -17,9 +117,8 @@ pub fn position_check_mode() -> Option<&'static str> {
 pub fn start_position_check(ui: &AppWindow, mode: &'static str) -> Outcome {
     use slint::winit_030::WinitWindowAccessor;
     let outcome = Rc::new(RefCell::new(None));
-    let (weak, result) = (ui.as_weak(), outcome.clone());
-    slint::Timer::single_shot(Duration::from_millis(350), move || {
-        let Some(ui) = weak.upgrade() else { return };
+    let result = outcome.clone();
+    after_native_initialized(ui, Duration::from_millis(350), move |ui| {
         let check = || -> Result<_, String> {
             if !ui.get_qa_preview() || settings_test_path().is_none() {
                 return Err("Position QA requires a preview and an explicit test file".into());
@@ -32,7 +131,13 @@ pub fn start_position_check(ui: &AppWindow, mode: &'static str) -> Outcome {
                         let saved = crate::platform::settings::load(&settings_test_path().unwrap())
                             .window_position
                             .ok_or("Position was not saved before close")?;
-                        PhysicalPosition::new(saved.x, saved.y)
+                        PhysicalPosition::from({
+                            let p = crate::platform::window::native_position(
+                                saved,
+                                window.scale_factor(),
+                            );
+                            (p.x, p.y)
+                        })
                     } else {
                         let monitor = window.primary_monitor().ok_or("No primary monitor")?;
                         let origin = monitor.position();
@@ -40,7 +145,12 @@ pub fn start_position_check(ui: &AppWindow, mode: &'static str) -> Outcome {
                         let size = window.outer_size();
                         PhysicalPosition::new(
                             origin.x + (screen.width as i32 - size.width as i32) / 2,
-                            origin.y + (screen.height as i32 - size.height as i32) / 2,
+                            origin.y
+                                + (screen.height as i32 - size.height as i32
+                                    + ((crate::chrome::BOTTOM - crate::chrome::TOP)
+                                        * window.scale_factor() as f32)
+                                        .round() as i32)
+                                    / 2,
                         )
                     };
                     if (actual.x - expected.x).abs() > 2 || (actual.y - expected.y).abs() > 2 {
@@ -121,9 +231,8 @@ pub fn settings_test_path() -> Option<std::path::PathBuf> {
 
 pub fn start_settings_check(ui: &AppWindow, write: bool) -> Outcome {
     let outcome = Rc::new(RefCell::new(None));
-    let (weak, result) = (ui.as_weak(), outcome.clone());
-    slint::Timer::single_shot(Duration::from_millis(150), move || {
-        let Some(ui) = weak.upgrade() else { return };
+    let result = outcome.clone();
+    after_native_initialized(ui, Duration::from_millis(150), move |ui| {
         let check = || -> Result<(), String> {
             if !ui.get_qa_preview() || settings_test_path().is_none() {
                 return Err("Settings QA requires a preview and an explicit test file".into());
@@ -175,11 +284,11 @@ pub fn start_settings_check(ui: &AppWindow, write: bool) -> Outcome {
                     .size()
                     .to_logical(ui.window().scale_factor())
                     .height;
-                if (height - ui.get_page_height() - 2.0 * ui.get_shadow_padding()).abs() > 1.5 {
+                if (height - ui.get_page_height() - crate::chrome::VERTICAL).abs() > 1.5 {
                     return Err(format!(
                         "Restart window height {height} did not fit page {} plus shadow {} (PIN {pin})",
                         ui.get_page_height(),
-                        2.0 * ui.get_shadow_padding()
+                        crate::chrome::VERTICAL
                     ));
                 }
                 let selections: Vec<_> = ui.get_options().iter().map(|o| o.selected).collect();
@@ -221,9 +330,8 @@ pub fn start_settings_check(ui: &AppWindow, write: bool) -> Outcome {
 
 pub fn start(ui: &AppWindow) -> Outcome {
     let outcome = Rc::new(RefCell::new(None));
-    let (weak, result) = (ui.as_weak(), outcome.clone());
-    slint::Timer::single_shot(Duration::from_millis(150), move || {
-        let Some(ui) = weak.upgrade() else { return };
+    let result = outcome.clone();
+    after_native_initialized(ui, Duration::from_millis(150), move |ui| {
         if let Err(message) = check_callbacks(&ui) {
             *result.borrow_mut() = Some(Err(message));
             let _ = slint::quit_event_loop();
@@ -239,6 +347,8 @@ fn check_callbacks(ui: &AppWindow) -> Result<(), String> {
     if !ui.get_qa_preview() {
         return Err("Refusing to capture real password data".into());
     }
+    #[cfg(target_os = "windows")]
+    crate::platform::windows_startup::check_first_frame()?;
     use slint::winit_030::{WinitWindowAccessor, winit::window::WindowButtons};
     if ui
         .window()
@@ -285,8 +395,8 @@ fn check_callbacks(ui: &AppWindow) -> Result<(), String> {
     // Exercise the explicit Copy action with synthetic preview data only.
     click(
         ui,
-        320.0 + ui.get_shadow_padding(),
-        238.0 + ui.get_shadow_padding(),
+        320.0 + ui.get_shadow_left(),
+        238.0 + ui.get_shadow_top(),
     )?;
     if !ui.get_copied() {
         snapshot(
@@ -302,8 +412,8 @@ fn check_callbacks(ui: &AppWindow) -> Result<(), String> {
     ui.set_generated_password("".into());
     click(
         ui,
-        170.0 + ui.get_shadow_padding(),
-        192.0 + ui.get_shadow_padding(),
+        170.0 + ui.get_shadow_left(),
+        192.0 + ui.get_shadow_top(),
     )?;
     if ui.get_copied() || ui.get_generated_password().is_empty() {
         return Err("Clicking the result frame did not regenerate the password".into());
@@ -326,11 +436,7 @@ fn check_callbacks(ui: &AppWindow) -> Result<(), String> {
         return Err("Keyboard regeneration failed".into());
     }
     let displayed = ui.get_generated_password();
-    click(
-        ui,
-        74.0 + ui.get_shadow_padding(),
-        15.0 + ui.get_shadow_padding(),
-    )?;
+    click(ui, 74.0 + ui.get_shadow_left(), 15.0 + ui.get_shadow_top())?;
     if !ui.get_about() {
         snapshot(
             ui,
@@ -362,8 +468,8 @@ fn check_slider_wheel(ui: &AppWindow) -> Result<(), String> {
         ui.window()
             .dispatch_event_with_result(slint::platform::WindowEvent::PointerScrolled {
                 position: slint::LogicalPosition::new(
-                    ui.get_shadow_padding() + x,
-                    ui.get_shadow_padding() + 107.0,
+                    ui.get_shadow_left() + x,
+                    ui.get_shadow_top() + 107.0,
                 ),
                 delta_x,
                 delta_y,
@@ -466,7 +572,7 @@ fn prepare_scene(ui: &AppWindow, scene: usize) {
         ui.set_about(true);
     }
     if scene == 7 {
-        let padding = 2.0 * ui.get_shadow_padding();
+        let padding = crate::chrome::HORIZONTAL;
         ui.window()
             .set_size(slint::LogicalSize::new(380.0 + padding, 320.0 + padding));
     }
@@ -480,7 +586,7 @@ fn capture_next(weak: slint::Weak<AppWindow>, scene: usize, outcome: Outcome) {
             .size()
             .to_logical(ui.window().scale_factor())
             .width
-            - 2.0 * ui.get_shadow_padding();
+            - crate::chrome::VERTICAL;
         let x = match scene {
             9 => 74.0,
             10 => width - 67.0,
@@ -488,8 +594,8 @@ fn capture_next(weak: slint::Weak<AppWindow>, scene: usize, outcome: Outcome) {
             _ => width - 22.0,
         };
         let position = slint::LogicalPosition::new(
-            ui.get_shadow_padding() + x,
-            ui.get_shadow_padding() + if scene >= 12 { 178.0 } else { 15.0 },
+            ui.get_shadow_left() + x,
+            ui.get_shadow_top() + if scene >= 12 { 178.0 } else { 15.0 },
         );
         if let Err(error) = ui
             .window()
@@ -505,7 +611,7 @@ fn capture_next(weak: slint::Weak<AppWindow>, scene: usize, outcome: Outcome) {
     let (mid_weak, mid_outcome) = (weak.clone(), outcome.clone());
     slint::Timer::single_shot(Duration::from_millis(120), move || {
         let Some(ui) = mid_weak.upgrade() else { return };
-        if (ui.get_card_top() - ui.get_shadow_padding()).abs() > 0.5 {
+        if (ui.get_card_top() - ui.get_shadow_top()).abs() > 0.5 {
             *mid_outcome.borrow_mut() = Some(Err("Card top moved during transition".into()));
             let _ = slint::quit_event_loop();
             return;
@@ -521,7 +627,7 @@ fn capture_next(weak: slint::Weak<AppWindow>, scene: usize, outcome: Outcome) {
             .size()
             .to_logical(ui.window().scale_factor())
             .height
-            - 2.0 * ui.get_shadow_padding();
+            - crate::chrome::VERTICAL;
         if (scene == 1 && !(233.0..263.0).contains(&height))
             || (scene == 2 && !(150.0..233.0).contains(&height))
         {
@@ -537,8 +643,8 @@ fn capture_next(weak: slint::Weak<AppWindow>, scene: usize, outcome: Outcome) {
         // This catches fading the entire white card into the gray window backdrop.
         let bright = ui.window().take_snapshot().is_ok_and(|pixels| {
             let scale = ui.window().scale_factor();
-            let x = ((ui.get_shadow_padding() + 4.0) * scale).round() as usize;
-            let y = ((ui.get_shadow_padding() + 120.0) * scale).round() as usize;
+            let x = ((ui.get_shadow_left() + 4.0) * scale).round() as usize;
+            let y = ((ui.get_shadow_top() + 120.0) * scale).round() as usize;
             pixels
                 .as_slice()
                 .get(y * pixels.width() as usize + x)
@@ -553,7 +659,7 @@ fn capture_next(weak: slint::Weak<AppWindow>, scene: usize, outcome: Outcome) {
     });
     slint::Timer::single_shot(Duration::from_millis(450), move || {
         let Some(ui) = weak.upgrade() else { return };
-        if (ui.get_card_top() - ui.get_shadow_padding()).abs() > 0.5 {
+        if (ui.get_card_top() - ui.get_shadow_top()).abs() > 0.5 {
             *outcome.borrow_mut() = Some(Err("Card top is not anchored".into()));
             let _ = slint::quit_event_loop();
             return;
@@ -561,20 +667,21 @@ fn capture_next(weak: slint::Weak<AppWindow>, scene: usize, outcome: Outcome) {
         let logical_size = ui.window().size().to_logical(ui.window().scale_factor());
         let corners_clear = ui.window().take_snapshot().is_ok_and(|pixels| {
             let scale = ui.window().scale_factor();
-            let offset = ((ui.get_shadow_padding() + 3.0) * scale).round() as usize;
+            let offset = ((ui.get_shadow_left() + 3.0) * scale).round() as usize;
+            let top_offset = ((ui.get_shadow_top() + 3.0) * scale).round() as usize;
             let width = pixels.width() as usize;
-            let left = pixels.as_slice()[offset * width + offset];
-            let right = pixels.as_slice()[offset * width + width - offset - 1];
-            let shadow_x = ((ui.get_shadow_padding() - 6.0) * scale).round() as usize;
+            let left = pixels.as_slice()[top_offset * width + offset];
+            let right = pixels.as_slice()[top_offset * width + width - offset - 1];
+            let shadow_x = ((ui.get_shadow_left() - 6.0) * scale).round() as usize;
             let shadow = pixels.as_slice()[pixels.height() as usize / 2 * width + shadow_x];
-            let card_width = width as f32 / scale - 2.0 * ui.get_shadow_padding();
+            let card_width = width as f32 / scale - crate::chrome::HORIZONTAL;
             let border_x = match scene {
                 10 => card_width - 67.0,
                 11 => card_width - 34.0,
                 _ => card_width / 2.0,
             };
-            let border_x = ((ui.get_shadow_padding() + border_x) * scale).round() as usize;
-            let border_y = (ui.get_shadow_padding() * scale).round() as usize;
+            let border_x = ((ui.get_shadow_left() + border_x) * scale).round() as usize;
+            let border_y = (ui.get_shadow_top() * scale).round() as usize;
             let border = pixels.as_slice()[border_y * width + border_x];
             left.a < 100
                 && right.a < 100
@@ -593,7 +700,7 @@ fn capture_next(weak: slint::Weak<AppWindow>, scene: usize, outcome: Outcome) {
             let _ = slint::quit_event_loop();
             return;
         }
-        if scene >= 7 && (logical_size.width - 380.0 - 2.0 * ui.get_shadow_padding()).abs() > 1.5 {
+        if scene >= 7 && (logical_size.width - 380.0 - crate::chrome::HORIZONTAL).abs() > 1.5 {
             *outcome.borrow_mut() = Some(Err(format!(
                 "Compact window width was overridden: {}",
                 logical_size.width
@@ -602,10 +709,8 @@ fn capture_next(weak: slint::Weak<AppWindow>, scene: usize, outcome: Outcome) {
             return;
         }
         if scene != 7
-            && (logical_size.height
-                - ui.get_page_height().max(150.0)
-                - 2.0 * ui.get_shadow_padding())
-            .abs()
+            && (logical_size.height - ui.get_page_height().max(150.0) - crate::chrome::VERTICAL)
+                .abs()
                 > 1.5
         {
             *outcome.borrow_mut() = Some(Err(
@@ -615,7 +720,7 @@ fn capture_next(weak: slint::Weak<AppWindow>, scene: usize, outcome: Outcome) {
             return;
         }
         if (9..12).contains(&scene) {
-            let width = logical_size.width - 2.0 * ui.get_shadow_padding();
+            let width = logical_size.width - crate::chrome::HORIZONTAL;
             // Menu stays unpainted; system buttons still fill their parent frames.
             let points = match scene {
                 9 => [(11.0, 8.0), (77.0, 22.0)],
@@ -625,8 +730,8 @@ fn capture_next(weak: slint::Weak<AppWindow>, scene: usize, outcome: Outcome) {
             let visible_hover = ui.window().take_snapshot().is_ok_and(|pixels| {
                 let scale = ui.window().scale_factor();
                 points.into_iter().all(|(x, y)| {
-                    let x = ((ui.get_shadow_padding() + x) * scale).round() as usize;
-                    let y = ((ui.get_shadow_padding() + y) * scale).round() as usize;
+                    let x = ((ui.get_shadow_left() + x) * scale).round() as usize;
+                    let y = ((ui.get_shadow_top() + y) * scale).round() as usize;
                     let pixel = pixels.as_slice()[y * pixels.width() as usize + x];
                     if scene == 9 {
                         pixel.r == 243 && pixel.g == 244 && pixel.b == 247 && pixel.a == 255
@@ -651,8 +756,8 @@ fn capture_next(weak: slint::Weak<AppWindow>, scene: usize, outcome: Outcome) {
                 ui.set_copied(true);
                 if let Err(error) = click(
                     &ui,
-                    170.0 + ui.get_shadow_padding(),
-                    162.0 + ui.get_shadow_padding(),
+                    170.0 + ui.get_shadow_left(),
+                    162.0 + ui.get_shadow_top(),
                 ) {
                     *outcome.borrow_mut() = Some(Err(error));
                     let _ = slint::quit_event_loop();
@@ -671,13 +776,26 @@ fn capture_next(weak: slint::Weak<AppWindow>, scene: usize, outcome: Outcome) {
             let hover_correct = ui.window().take_snapshot().is_ok_and(|pixels| {
                 let scale = ui.window().scale_factor();
                 let top = if scene == 13 { 142.0 } else { 172.0 };
-                let x = ((ui.get_shadow_padding() + 20.0) * scale).round() as usize;
-                let y = ((ui.get_shadow_padding() + top + 10.0) * scale).round() as usize;
+                let x = ((ui.get_shadow_left() + 20.0) * scale).round() as usize;
+                let y = ((ui.get_shadow_top() + top + 10.0) * scale).round() as usize;
                 let pixel = pixels.as_slice()[y * pixels.width() as usize + x];
                 pixel.r == 234 && pixel.g == 242 && pixel.b == 255 && pixel.a == 255
             });
             if !hover_correct {
                 *outcome.borrow_mut() = Some(Err("Result hover did not use #EAF2FF".into()));
+                let _ = slint::quit_event_loop();
+                return;
+            }
+        }
+        #[cfg(target_os = "windows")]
+        if scene <= 2 {
+            use slint::winit_030::WinitWindowAccessor;
+            let checked = ui
+                .window()
+                .with_winit_window(crate::platform::windows_chrome::check_synchronous_movement)
+                .unwrap_or_else(|| Err("Native preview window was unavailable".into()));
+            if let Err(message) = checked {
+                *outcome.borrow_mut() = Some(Err(message));
                 let _ = slint::quit_event_loop();
                 return;
             }
@@ -706,9 +824,74 @@ fn capture_next(weak: slint::Weak<AppWindow>, scene: usize, outcome: Outcome) {
             let _ = slint::quit_event_loop();
             return;
         }
+        if scene == 2 || scene == 5 {
+            let before = PROJECT_OPENS.with(|n| n.get());
+            let check = (|| -> Result<(), String> {
+                // Locate the blue GitHub text in the shared metadata row. Its
+                // x position follows the localized labels and current version.
+                let pixels = ui.window().take_snapshot().map_err(|e| e.to_string())?;
+                let scale = ui.window().scale_factor();
+                let (from, to) = (
+                    ((ui.get_shadow_top() + 92.0) * scale) as u32,
+                    ((ui.get_shadow_top() + 110.0) * scale) as u32,
+                );
+                let mut bounds = (pixels.width(), pixels.height(), 0, 0);
+                for y in from..to {
+                    for x in 0..pixels.width() {
+                        let p = pixels.as_slice()[(y * pixels.width() + x) as usize];
+                        if p.r < 60 && (60..160).contains(&p.g) && p.b > 180 && p.a > 128 {
+                            bounds.0 = bounds.0.min(x);
+                            bounds.1 = bounds.1.min(y);
+                            bounds.2 = bounds.2.max(x);
+                            bounds.3 = bounds.3.max(y);
+                        }
+                    }
+                }
+                if bounds.0 > bounds.2 {
+                    return Err("GitHub was not visible after the version".into());
+                }
+                click(
+                    &ui,
+                    (bounds.0 + bounds.2) as f32 / (2.0 * scale),
+                    (bounds.1 + bounds.3) as f32 / (2.0 * scale),
+                )?;
+                for event in [
+                    slint::platform::WindowEvent::KeyPressed {
+                        text: slint::platform::Key::Return.into(),
+                    },
+                    slint::platform::WindowEvent::KeyReleased {
+                        text: slint::platform::Key::Return.into(),
+                    },
+                ] {
+                    ui.window()
+                        .dispatch_event_with_result(event)
+                        .map_err(|e| e.to_string())?;
+                }
+                if PROJECT_OPENS.with(|n| n.get()) != before + 2 {
+                    return Err("GitHub link did not support click and keyboard activation".into());
+                }
+                Ok(())
+            })();
+            if let Err(error) = check {
+                *outcome.borrow_mut() = Some(Err(error));
+                let _ = slint::quit_event_loop();
+                return;
+            }
+        }
         if scene == names.len() - 1 {
-            *outcome.borrow_mut() = Some(Ok(()));
-            let _ = slint::quit_event_loop();
+            // Native composition must settle, rather than keeping its own
+            // resize/redraw events alive while no UI state changes.
+            slint::Timer::single_shot(Duration::from_millis(400), move || {
+                let frames = NATIVE_FRAMES.with(|n| n.get());
+                slint::Timer::single_shot(Duration::from_millis(250), move || {
+                    *outcome.borrow_mut() = Some(if NATIVE_FRAMES.with(|n| n.get()) == frames {
+                        Ok(())
+                    } else {
+                        Err("Native window kept redrawing while idle".into())
+                    });
+                    let _ = slint::quit_event_loop();
+                });
+            });
         } else {
             prepare_scene(&ui, scene + 1);
             capture_next(ui.as_weak(), scene + 1, outcome);

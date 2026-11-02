@@ -13,7 +13,7 @@ PassGen 自身的源码使用 [MIT License](LICENSE)。第三方组件、字体�
 
 ## 字体
 
-内嵌 Noto Sans SC Regular 字体子集使用 SIL Open Font License 1.1，见 [字体许可](LICENSES/NotoSansSC-OFL.txt)。历史 Roboto／Inter 字体及其许可仍保留在 `assets/`，当前应用不导入它们。
+内嵌 Noto Sans SC Regular 正文字体子集与 Bold 标题字体子集使用 SIL Open Font License 1.1，见 [字体许可](LICENSES/NotoSansSC-OFL.txt)。历史 Roboto／Inter 字体及其许可仍保留在 `assets/`，当前应用不导入它们。
 
 ## Made with Slint 徽标
 

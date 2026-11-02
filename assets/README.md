@@ -24,6 +24,8 @@ Figma 图标 SVG 按原稿下载使用。应用图标保留用户原有 64 × 50
 
 中英文统一使用 `NotoSansSC-UI.ttf`，为 Google Fonts Noto Sans SC 的 Regular 400 子集，当前包含 172 个码位、37,228 字节。字体使用 fontTools 4.68.0 生成，许可见 [NotoSansSC-OFL.txt](NotoSansSC-OFL.txt)。
 
+标题栏的 `PassGen` 单独使用 `NotoSansSC-Title.ttf`，同源字体的 Bold 700 静态子集，仅含品牌所需6个不同码位，3,800字节。从源可变字体先筛选`PassGen`，再通过fontTools的`instantiateVariableFont`固定`wght=700`并启用`updateFontNames=True`，保留版权信息及上述许可。12px字号下P的主要竖笔画约1.77px，与关闭图标的1.7px接近；正文仍为400。字体随EXE嵌入，运行时不读取外部文件。
+
 增加界面或错误提示文案时，重新生成字体子集并检查新字形；字体只在构建时嵌入。
 
 历史字体 `Roboto.ttf` 和 `Inter.ttf` 仍保留，当前 UI 不再导入。对应许可为 [Roboto-OFL.txt](Roboto-OFL.txt) 和 [Inter-OFL.txt](Inter-OFL.txt)。

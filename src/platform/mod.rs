@@ -1,3 +1,9 @@
 pub mod clipboard;
+pub mod instance;
+pub mod project;
 pub mod settings;
 pub mod window;
+#[cfg(target_os = "windows")]
+pub(crate) mod windows_chrome;
+#[cfg(target_os = "windows")]
+pub(crate) mod windows_startup;

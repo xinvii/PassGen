@@ -16,7 +16,6 @@ export component ActionButton inherits Rectangle {
     in property <bool> enabled: true;
     in property <bool> checked;
     in property <bool> show-check;
-    in property <bool> show-focus-ring: true;
     in property <bool> checkable: root.show-check;
     in property <string> label-family: "Noto Sans SC";
     in property <color> fill: Palette.selected;
@@ -24,12 +23,11 @@ export component ActionButton inherits Rectangle {
     in property <color> pressed-fill: root.fill.darker(0.09);
     in property <color> ink: Palette.brand;
     in property <length> label-size: 16px;
+    in property <length> content-padding: 8px;
+    in property <bool> align-label-left;
     out property <bool> hovered: touch.has-hover;
     out property <bool> pressed: touch.pressed;
     callback clicked();
-    private property <bool> pointer-focus;
-    private property <bool> focused: keyboard.has-focus;
-    changed focused => { if !root.focused { root.pointer-focus = false; } }
     forward-focus: keyboard;
     accessible-role: button;
     accessible-label: root.label;
@@ -39,20 +37,13 @@ export component ActionButton inherits Rectangle {
     accessible-action-default => { if root.enabled { root.clicked(); } }
     height: 30px;
     border-radius: 9px;
-    Rectangle {
-        x: 2px; y: 2px;
-        width: parent.width - 4px; height: parent.height - 4px;
-        border-radius: max(0px, root.border-radius - 2px);
-        border-width: 2px; border-color: Palette.brand;
-        visible: root.show-focus-ring && keyboard.has-focus && !root.pointer-focus;
-    }
     background: root.enabled && touch.pressed ? root.pressed-fill
         : root.enabled && touch.has-hover ? root.hover-fill : root.fill;
     animate background { duration: 140ms; }
     HorizontalLayout {
-        alignment: center;
+        alignment: root.align-label-left ? start : center;
         spacing: 8px;
-        padding-left: 8px; padding-right: 8px;
+        padding-left: root.content-padding; padding-right: root.content-padding;
         padding-top: 0px; padding-bottom: 0px;
         if root.show-check : Rectangle {
             width: 16px;
@@ -80,7 +71,6 @@ export component ActionButton inherits Rectangle {
     keyboard := FocusScope {
         enabled: root.enabled;
         key-pressed(event) => {
-            root.pointer-focus = false;
             if root.enabled && (event.text == Key.Space || event.text == Key.Return) {
                 root.clicked();
                 return accept;
@@ -91,7 +81,7 @@ export component ActionButton inherits Rectangle {
     touch := TouchArea {
         enabled: root.enabled;
         mouse-cursor: root.enabled ? pointer : default;
-        clicked => { root.pointer-focus = true; keyboard.focus(); root.clicked(); }
+        clicked => { keyboard.focus(); root.clicked(); }
     }
 }
 
@@ -169,13 +159,12 @@ export component LengthSlider inherits Rectangle {
         height: 16px;
         border-radius: 8px;
         background: Palette.surface;
-        border-width: keyboard.has-focus ? 2px : 1px;
-        border-color: keyboard.has-focus ? Palette.brand : #a4acba;
+        border-width: 1px;
+        border-color: #a4acba;
         Image {
             width: 16px;
             height: 16px;
             source: @image-url("../assets/figma/slider-thumb.svg");
-            visible: !keyboard.has-focus;
         }
     }
     keyboard := FocusScope {
@@ -228,8 +217,8 @@ export component LengthInput inherits Rectangle {
     width: 41px;
     height: 30px;
     border-radius: 9px;
-    border-width: input.has-focus || root.invalid ? 2px : 0px;
-    border-color: root.invalid ? Palette.error : input.has-focus ? Palette.brand : Palette.border;
+    border-width: root.invalid ? 2px : 0px;
+    border-color: root.invalid ? Palette.error : Palette.border;
     background: Palette.surface;
     changed focused => { if !root.focused { root.committed(root.value); } }
     input := TextInput {

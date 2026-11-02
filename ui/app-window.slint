@@ -1,5 +1,6 @@
 import { Palette } from "theme.slint";
 import "../assets/NotoSansSC-UI.ttf";
+import "../assets/NotoSansSC-Title.ttf";
 import { ActionButton, WindowButton, Label, LengthSlider, LengthInput } from "components.slint";
 import { WindowChrome, ChromeSkin } from "window-chrome.slint";
 export { ChromeSkin }
@@ -13,11 +14,12 @@ export struct CharacterOption {
 export component AppWindow inherits Window {
     title: root.qa-preview ? "PassGen [UI preview]" : "PassGen";
     icon: @image-url("../assets/passgen.png");
-    preferred-width: 422px;
-    preferred-height: root.initial-page-height + 2 * root.shadow-padding;
-    min-width: 422px;
-    min-height: 222px;
+    preferred-width: 394px;
+    preferred-height: root.initial-page-height + root.shadow-top + root.shadow-bottom;
+    min-width: 394px;
+    min-height: 194px;
     no-frame: true;
+    always-on-top: root.qa-native-topmost;
     resize-border-width: 0px;
     background: transparent;
     default-font-family: "Noto Sans SC";
@@ -25,10 +27,14 @@ export component AppWindow inherits Window {
 
     in property <bool> chinese: true;
     in property <ChromeSkin> chrome-skin;
-    out property <length> shadow-padding: 36px;
+    out property <length> shadow-left: 22px;
+    out property <length> shadow-right: 22px;
+    out property <length> shadow-top: 16px;
+    out property <length> shadow-bottom: 28px;
     in property <length> initial-page-height: 263px;
     callback begin-resize(int);
     in property <bool> qa-preview;
+    in property <bool> qa-native-topmost;
     in property <bool> pin;
     in-out property <bool> about;
     in property <int> length-value: 20;
@@ -49,7 +55,9 @@ export component AppWindow inherits Window {
     callback regenerate();
     callback copy-password();
     callback return-to-generator();
+    callback open-project();
     callback animate-window-size();
+    callback native-initialized();
     in property <float> pin-progress: 0;
     in property <float> about-progress: 0;
     in property <float> language-progress: 1;
@@ -69,9 +77,9 @@ export component AppWindow inherits Window {
 
     WindowChrome { width: root.width; height: root.height; skin: root.chrome-skin; }
     card := Rectangle {
-        x: root.shadow-padding; y: root.shadow-padding;
-        width: root.width - 2 * root.shadow-padding;
-        height: root.height - 2 * root.shadow-padding;
+        x: root.shadow-left; y: root.shadow-top;
+        width: root.width - root.shadow-left - root.shadow-right;
+        height: root.height - root.shadow-top - root.shadow-bottom;
         clip: true;
         Rectangle {
             x: 0px; y: 0px; width: parent.width; height: 30px;
@@ -84,7 +92,7 @@ export component AppWindow inherits Window {
                     spacing: 4px;
                     brand-title := Text {
                         text: "PassGen"; horizontal-stretch: 0;
-                        color: Palette.text; font-size: 12px;
+                        color: Palette.text; font-size: 12px; font-weight: 700;
                         vertical-alignment: center;
                     }
                     WindowButton {
@@ -217,7 +225,7 @@ export component AppWindow inherits Window {
                 width: parent.width - 20px; height: 100px;
                 opacity: root.about-progress; visible: root.about-progress > 0;
                 VerticalLayout {
-                    spacing: 10px;
+                    spacing: 10px; alignment: start;
                     Rectangle {
                         width: 198px; height: 42px;
                         background: Palette.neutral; border-radius: 15px;
@@ -240,20 +248,21 @@ export component AppWindow inherits Window {
                             }
                         }
                     }
-                    VerticalLayout {
-                        height: 48px; spacing: 12px;
-                        HorizontalLayout {
-                            height: 18px; spacing: 4px; alignment: start;
-                            Label { text: root.chinese ? "技术方案" : "Built with"; horizontal-stretch: 0; }
-                            Text { text: "Rust + Slint"; color: Palette.text; font-family: "Noto Sans SC"; font-size: 12px; horizontal-stretch: 0; vertical-alignment: center; }
-                            Label { text: "/"; horizontal-stretch: 0; }
-                            Label { text: root.chinese ? "版本" : "version"; horizontal-stretch: 0; }
-                            Label { text: root.app-version; horizontal-stretch: 0; }
-                            Label { text: "/"; horizontal-stretch: 0; }
-                            Label { text: root.chinese ? "检查更新" : "update"; horizontal-stretch: 0; }
+                    HorizontalLayout {
+                        height: 18px; spacing: 4px; alignment: start;
+                        Label { text: root.chinese ? "技术方案" : "Built with"; horizontal-stretch: 0; }
+                        Text { text: "Rust + Slint"; color: Palette.text; font-family: "Noto Sans SC"; font-size: 12px; horizontal-stretch: 0; vertical-alignment: center; }
+                        Label { text: "/"; horizontal-stretch: 0; }
+                        Label { text: root.chinese ? "版本" : "version"; horizontal-stretch: 0; }
+                        Label { text: root.app-version; horizontal-stretch: 0; }
+                        Label { text: "/"; horizontal-stretch: 0; }
+                        ActionButton {
+                            label: "GitHub"; width: 56px; height: 18px; label-size: 12px;
+                            content-padding: 0px; align-label-left: true;
+                            fill: transparent; hover-fill: transparent; pressed-fill: transparent;
+                            ink: Palette.brand; enabled: root.about;
+                            clicked => { root.open-project(); }
                         }
-                        // A real repository URL has not been supplied; no network action is attached.
-                        Label { text: "GitHub"; height: 18px; }
                     }
                 }
             }

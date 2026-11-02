@@ -137,7 +137,7 @@ fn frame(weak: slint::Weak<AppWindow>, state: Rc<RefCell<Motion>>, epoch: u64) {
         let width = crate::platform::window::logical_width(ui.window());
         ui.window().set_size(slint::LogicalSize::new(
             width,
-            ui.get_page_height().max(150.0) + 2.0 * crate::chrome::PADDING,
+            ui.get_page_height().max(150.0) + crate::chrome::VERTICAL,
         ));
     }
     if active {
