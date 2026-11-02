@@ -1,3 +1,7 @@
+0.1.2候选版，尚未公开发布。v0.1.1因图标灰色外框已撤回，最新公开版本为v0.1.0。
+
+本次重制移除导出工具额外加入的灰色画布背景，按最新64 × 48px原稿生成真正透明的窗口与EXE图标，保留原图比例。十种ICO尺寸的透明补边均已验证alpha为0。
+
 Windows x64 便携更新，运行时完全离线。
 
 ## 本次更新
@@ -13,12 +17,12 @@ Windows x64 便携更新，运行时完全离线。
 
 下载下方 `PassGen.exe`，双击运行，无需安装或管理员权限，无需Rust、Visual Studio、WebView或额外VC++运行库。`PassGen.exe.sha256`为对应校验文件。
 
-源码使用GitHub自动生成的 `Source code (zip)`／`Source code (tar.gz)`，对应v0.1.1标签。历史v0.1.0标签和附件保持原样。
+源码使用GitHub自动生成的 `Source code (zip)`／`Source code (tar.gz)`，候选版尚未创建公开发布标签。历史v0.1.0标签和附件保持原样。
 
 SHA-256：
 
 ```text
-DD0080AE90A12D3FCEA355F6D13C73C9A14A88EC3D0FF16E0A19EDF4977E7492
+EAA7453FB13412762C671F5B8BA3E9061BD75CEDE2946820815F0D34F12711B6
 ```
 
 ## 验证与限制
@@ -29,4 +33,4 @@ DD0080AE90A12D3FCEA355F6D13C73C9A14A88EC3D0FF16E0A19EDF4977E7492
 
 ## 许可
 
-PassGen自身源码为MIT；Slint使用Royalty-free 2.0。字体、徽标及其他依赖保留独立许可。完整依赖许可见[仓库许可目录](https://github.com/xinvii/PassGen/tree/v0.1.1/LICENSES/third-party)和[第三方声明](https://github.com/xinvii/PassGen/blob/v0.1.1/THIRD-PARTY-NOTICES.md)。
+PassGen自身源码为MIT；Slint使用Royalty-free 2.0。字体、徽标及其他依赖保留独立许可。完整依赖许可见[仓库许可目录](https://github.com/xinvii/PassGen/tree/main/LICENSES/third-party)和[第三方声明](https://github.com/xinvii/PassGen/blob/main/THIRD-PARTY-NOTICES.md)。
