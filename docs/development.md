@@ -1,6 +1,6 @@
 # PassGen 开发与验证
 
-更新日期：2026-11-02。开发约束见 [AGENTS.md](../AGENTS.md)，代码和存储格式见 [实现说明](implementation.md)。
+更新日期：2026-11-03。开发约束见 [AGENTS.md](../AGENTS.md)，代码和存储格式见 [实现说明](implementation.md)。
 
 ## 构建环境
 
@@ -102,7 +102,19 @@ if ($LASTEXITCODE -ne 0) { throw '屏幕外位置恢复居中检查失败' }
 
 ## 已验证版本
 
-以下各节保留对应构建完成时的验证与提交状态。2026-11-02将这些开发修复、标题字体资源和文档统一整理为本地Git提交；应用版本仍为0.1.0，未推送GitHub，不移动已发布标签或替换Release附件。当前最新本地测试程序为下节的`PassGen-Title.exe`；高速鼠标拖动、跨DPI多屏及新版本在无开发工具Windows10／11环境的完整复测仍未完成。
+以下各节保留对应构建完成时的验证与提交状态。2026-11-02将这些开发修复、标题字体资源和文档统一整理为本地Git提交；应用版本仍为0.1.0，未推送GitHub，不移动已发布标签或替换Release附件。当前正式构建为下节的v0.1.1；`PassGen-Title.exe`保留为历史测试版；高速鼠标拖动、跨DPI多屏及新版本在无开发工具Windows10／11环境的完整复测仍未完成。
+
+### 2026-11-03 v0.1.1 图标与开发修复发布
+
+使用Figma Frame 4（`192:299`）替换应用图标；包版本更新为0.1.1，包含此前0.1.0之后的开发修复。Windows x64正式构建使用单次命令环境变量`CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_RUSTFLAGS=-C target-feature=+crt-static`，运行`cargo build --locked --offline --release --target x86_64-pc-windows-msvc --target-dir work/shadow-release -j 1`，不更改全局Rust设置。
+
+格式、Clippy严格检查、29项单元测试、十四个示例界面及九个隔离设置／位置场景通过。首次单元测试的设置覆盖被受限环境拒绝，正常Windows会话重跑29项全部通过。已查看新图标及中文About示例截图（显示0.1.1）；未读取真实密码或用户设置。确认EXE包含16、20、24、32、40、48、64、96、128、256px十种新图标PNG，PE为x64，导入表无VCRUNTIME／MSVCP或延迟导入。
+
+发布文件为`target/releases/v0.1.1/PassGen.exe`（11,000,832字节）及`PassGen.exe.sha256`；源码使用新标签的GitHub自动归档，许可目录保留。不移动v0.1.0标签或更改其附件。此次未重新执行无开发工具Windows10／11、跨DPI和多屏完整实机矩阵，Linux／macOS仍未验证；EXE未数字签名。
+
+```text
+DD0080AE90A12D3FCEA355F6D13C73C9A14A88EC3D0FF16E0A19EDF4977E7492
+```
 
 ### 2026-11-02 标题品牌加粗（尚未发布）
 

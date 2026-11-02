@@ -1,35 +1,32 @@
-首个 Windows x64 便携版本，使用 Rust + Slint 构建，运行时完全离线。
+Windows x64 便携更新，运行时完全离线。
+
+## 本次更新
+
+- 更新应用图标：白色圆角底板、两行深灰PassGen文字和蓝点，同步窗口及EXE图标。
+- 修复启动黑框、移动时卡片与投影分层，以及透明外缘点击穿透。
+- Windows单实例：重复启动唤起已有窗口，恢复最小化，不改变当前密码。
+- Random特殊符号扩展为完整的 `~!@#$%^&*()_+`（13个）；按钮仍缩略显示 `!@#$`。
+- About的GitHub可点击后通过默认浏览器打开；移除检查更新占位，精简同行布局。
+- 标题PassGen加粗；全部控件移除焦点框并保留键盘操作。
 
 ## 下载与运行
 
-下载下方 `PassGen.exe`，双击即可运行，无需安装。无需 Rust、Visual Studio、WebView 或额外 VC++ 运行库；无需管理员权限。
+下载下方 `PassGen.exe`，双击运行，无需安装或管理员权限，无需Rust、Visual Studio、WebView或额外VC++运行库。`PassGen.exe.sha256`为对应校验文件。
 
-`PassGen.exe.sha256` 为对应的 SHA-256 校验文件。源码使用下方 GitHub 自动生成的 `Source code (zip)` 或 `Source code (tar.gz)` 下载，对应原始 v0.1.0 标签。
+源码使用GitHub自动生成的 `Source code (zip)`／`Source code (tar.gz)`，对应v0.1.1标签。历史v0.1.0标签和附件保持原样。
 
-## 功能
-
-- Random／PIN 两种模式，分别记住长度。
-- 四类字符多选、滑块与数字输入，滚轮逐格调整长度。
-- 点击结果框重新生成，点击复制按钮复制。
-- 英文／简体中文界面及 About 页面。
-- 圆角投影、顶部固定的页面过渡和窗口位置记忆。
-- 使用系统安全随机源和无偏采样，不保存或传输生成的密码。
-
-发行EXE与已验证测试版字节一致，SHA-256：
+SHA-256：
 
 ```text
-DB23F26BFAE48F93F522EDCBCD019240FCE1D40881E19CBD743D0A0A7C3A1FB7
+DD0080AE90A12D3FCEA355F6D13C73C9A14A88EC3D0FF16E0A19EDF4977E7492
 ```
 
-反馈请描述操作及现象，不要上传生成的密码或剪贴板内容。
+## 验证与限制
 
-## 已知限制
+29项单元测试、格式和严格代码检查、十四个示例界面及九个隔离设置／窗口位置场景通过；十种新图标尺寸已嵌入EXE。此次没有重新完成无开发工具Windows10／11、跨DPI或多屏实机矩阵；Linux／macOS未验证。程序未数字签名，附件为x64版本。
 
-- 当前版本未数字签名。
-- Linux／macOS未验证；本附件为x64，非32位或ARM64原生程序。
-- About中的“检查更新”和GitHub仍是文字，不触发联网。
-- 设置位于`%LOCALAPPDATA%\PassGen\settings.json`，不会随便携文件夹移动。
+设置位于 `%LOCALAPPDATA%\PassGen\settings.json`，不随程序目录移动。反馈请描述操作及现象，不要上传密码或剪贴板内容。
 
 ## 许可
 
-PassGen自身源码为MIT；Slint使用Royalty-free 2.0。字体、徽标及其他依赖保留独立许可。完整依赖许可保留在[仓库许可目录](https://github.com/xinvii/PassGen/tree/main/LICENSES/third-party)；详见[第三方声明](https://github.com/xinvii/PassGen/blob/main/THIRD-PARTY-NOTICES.md)。
+PassGen自身源码为MIT；Slint使用Royalty-free 2.0。字体、徽标及其他依赖保留独立许可。完整依赖许可见[仓库许可目录](https://github.com/xinvii/PassGen/tree/v0.1.1/LICENSES/third-party)和[第三方声明](https://github.com/xinvii/PassGen/blob/v0.1.1/THIRD-PARTY-NOTICES.md)。
