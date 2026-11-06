@@ -292,3 +292,12 @@ DB23F26BFAE48F93F522EDCBCD019240FCE1D40881E19CBD743D0A0A7C3A1FB7
 提交源码、Slint 界面、构建脚本、`Cargo.toml`／`Cargo.lock`、资源与许可、项目文档及 `AGENTS.md`。
 
 `target/`、`work/` 和日志已被忽略，正式程序、缓存、示例截图和隔离设置文件不进入 Git。真实用户设置位于 AppData，生成的密码不落盘。
+
+
+### 2026-11-03 最新蓝底图标候选版
+
+重新读取并直接导出用户最新Frame 4：64 × 48px蓝色渐变底、白字、绿点。窗口PNG与十种ICO同步，逐尺寸验证透明补边alpha为0；静态CRT构建通过，EXE含全部十种新图标且无VCRUNTIME／MSVCP导入。格式及文档检查通过；此次仅图标变化，不重复核心单元测试。
+
+文件另存为`target/releases/v0.1.2-blue-icon/PassGen.exe`和同名校验文件，保留上一白底候选版。SHA-256：`AF476F5C613D8E65F16F533E3C5C9C24811D60DD19499C479C4E2136CAE30B7D`。GitHub保持撤回状态，未重新公开发布。
+
+2026-11-07按用户确认将上述蓝底候选构建发布为v0.1.2，手动附件为EXE及SHA-256校验文件。

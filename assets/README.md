@@ -29,3 +29,7 @@ Figma图标SVG采用最新原稿，移除资产下载工具额外加入的`#E9E9
 增加界面或错误提示文案时，重新生成字体子集并检查新字形；字体只在构建时嵌入。
 
 历史字体 `Roboto.ttf` 和 `Inter.ttf` 仍保留，当前 UI 不再导入。对应许可为 [Roboto-OFL.txt](Roboto-OFL.txt) 和 [Inter-OFL.txt](Inter-OFL.txt)。
+
+## 最新图标修订
+
+2026-11-03再次读取用户新修改的Frame 4（`192:299`），现为蓝色渐变底板、白色PassGen文字和绿色圆点（`#00FF4D`），64 × 48px。直接采用节点`exportAsync(SVG_STRING)`原稿，保持裁切、文字投影及透明外缘；窗口PNG和十种ICO同步更新。上文白底灰字蓝点为此前修订记录，已被本版取代。
